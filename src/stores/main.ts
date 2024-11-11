@@ -950,6 +950,24 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
+  const makeFullPayment = async (invoiceId: string, customerId: string) => {
+    try {
+      console.log('Processing full payment:', { invoiceId, customerId });
+      const response = await axiosInstance.post('/api/invoices/payment/full', {
+        invoiceId,
+        customerId
+      });
+      
+      // Refresh invoice data after successful payment
+      await fetchCustomerInvoices(customerId);
+      
+      return response.data;
+    } catch (error) {
+      console.error('Full payment failed:', error);
+      throw error;
+    }
+  };
+
   return {
     branchesData,
     fetchBranches,
@@ -995,6 +1013,7 @@ export const useMainStore = defineStore('main', () => {
     fetchInvoices,
     fetchCustomerInvoices,
     makeInvoicePayment,
-    searchInvoiceCustomers
+    searchInvoiceCustomers,
+    makeFullPayment
   }
 })

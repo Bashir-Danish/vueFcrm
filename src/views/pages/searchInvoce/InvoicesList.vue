@@ -299,12 +299,8 @@ const handleFullPayment = async (invoice: Invoice) => {
       throw new Error('Customer ID is missing');
     }
 
-    await mainStore.makeInvoicePayment({
-      invoiceId: invoice.id,
-      amount: invoice.balance,
-      customerId: invoice.customerRef.value,
-      lineItemId: invoice.id 
-    });
+    // Use the new full payment method
+    await mainStore.makeFullPayment(invoice.id, invoice.customerRef.value);
 
     toast({
       title: t('invoices.payment.success'),
@@ -314,8 +310,9 @@ const handleFullPayment = async (invoice: Invoice) => {
       variant: 'default'
     });
 
-    if (invoice?.customer?.quickbooksCustomerId) {
-      await mainStore.fetchCustomerInvoices(invoice.customer.quickbooksCustomerId);
+    // Refresh the invoices data
+    if (invoice?.customerRef?.value) {
+      await mainStore.fetchCustomerInvoices(invoice.customerRef.value);
     }
 
   } catch (error) {
@@ -672,7 +669,7 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                               item.id, 
                                               Number((e.target as HTMLInputElement).value)
                                             )"
-                                            class="w-24 text-right"
+                                            class="w-24 text-right focus:ring focus:ring-opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             :min="0"
                                             :max="item.remainingBalance"
                                             step="0.01"
