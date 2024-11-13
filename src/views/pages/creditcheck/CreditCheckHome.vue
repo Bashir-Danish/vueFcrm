@@ -124,15 +124,16 @@ const handleReject = () => {
 };
 
 const handleConfirmAction = async () => {
-  if (selectedItem.value && typeof selectedItem.value.customerId === 'object') {
+  if (!selectedItem.value || typeof selectedItem.value.customerId !== 'object') return;
+
+  try {
+    showConfirmDialog.value = false; 
+    showDetailsDialog.value = false; 
+    loading.value = true; 
+
     const action = confirmActionType.value;
     const itemId = selectedItem.value._id;
     const customer = selectedItem.value.customerId;
-    
-    // Filter only unpaid devices with device property
-    const unpaidDevices = customer.devices?.filter(device => !device.paid && device.device) || [];
-    // Get current service only if unpaid
-    const unpaidService = customer.currentService && !customer.currentService.paid ? customer.currentService : null;
     
     const creditCheckData = {
       id: itemId,
@@ -140,31 +141,33 @@ const handleConfirmAction = async () => {
       deviceTotalPrice: deviceTotalPrice.value,
       packagePrice: packagePrice.value,
       totalPrice: totalPrice.value,
-      devices: unpaidDevices,
-      currentService: unpaidService
+      devices: customer.devices?.filter(device => !device.paid && device.device) || [],
+      currentService: customer.currentService && !customer.currentService.paid ? customer.currentService : null
     };
 
-    try {
-      // Use approveCreditCheck for both approve and reject actions
-      await mainStore.approveCreditCheck(creditCheckData);
-
+    const response = await mainStore.approveCreditCheck(creditCheckData);
+    console.log(response);
+    
+    if (response && response.data.success) {
       toast({
         title: action === 'approve' ? "Approved" : "Rejected",
-        description: `Credit check has been ${action === 'approve' ? 'approved' : 'rejected'}.`,
+        description: response.data.message || `Credit check has been ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
       });
-      
       await fetchChecklistItems();
-    } catch (error) {
-      console.error(`Error ${action}ing credit check:`, error);
-      toast({
-        title: "Error",
-        description: `Failed to ${action} credit check. Please try again.`,
-        variant: "destructive",
-      });
-    } finally {
-      showConfirmDialog.value = false;
-      showDetailsDialog.value = false;
+    } else {
+      const errorMessage = response?.data?.message || 'Operation failed';
+      throw new Error(errorMessage);
     }
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error(`Error ${confirmActionType.value}ing credit check:`, error);
+    toast({
+      title: "Error",
+      description: error.message || `Failed to ${confirmActionType.value} credit check. Please try again.`,
+      variant: "destructive",
+    });
+  } finally {
+    loading.value = false;
   }
 };
 

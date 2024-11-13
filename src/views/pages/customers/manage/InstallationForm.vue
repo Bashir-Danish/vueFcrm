@@ -109,6 +109,8 @@ const mainStore = useMainStore();
 const toast = useToast();
 
 const handleSubmit = async () => {
+  const selectedService = services.value.find(service => service.Service_Id === selectedPackageId.value);
+  
   const installationData = {
     _id: installationId.value,
     taskId: props.taskData?._id,
@@ -129,12 +131,15 @@ const handleSubmit = async () => {
       antennaMac: antennaMac.value,
       source: deviceSource.value
     },
-    selectedService: services.value.find(service => service.Service_Id === selectedPackageId.value)
+    selectedService
   };
 
   try {
     await mainStore.updateInstallation(installationData);
-    toast.toast({ title: 'Success', description: 'Installation and service updated successfully!' });
+    toast.toast({ 
+      title: 'Success', 
+      description: 'Installation and service updated successfully!' 
+    });
   } catch (error) {
     console.error("Error updating installation:", error);
     toast.toast({ 
@@ -149,11 +154,13 @@ const handleApprove = async () => {
   try {
     const selectedService = services.value.find(service => service.Service_Id === selectedPackageId.value);
     
-    const customerService = {
-      service: selectedService
-    };
-
-    const response = await mainStore.approveOrRejectInstallation(installationId.value, 'approve', undefined, customerService);
+    const response = await mainStore.approveOrRejectInstallation(
+      installationId.value, 
+      'approve', 
+      undefined,
+      selectedService
+    );
+    
     toast.toast({ 
       title: 'Success', 
       description: response.toastMessage || 'Installation approved successfully!' 

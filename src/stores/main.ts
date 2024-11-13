@@ -721,46 +721,16 @@ export const useMainStore = defineStore('main', () => {
     installationId: string, 
     action: 'approve' | 'reject', 
     reason?: string,
-    customerService?: any
+    selectedService?: any
   ) => {
     try {
-      const authStore = useAuthStore();
-      if (!authStore.isAuthenticated) {
-        throw new Error('User is not authenticated');
-      }
-
-      const payload = action === 'reject' 
-        ? { reason } 
-        : { customerService };
-
-      const response = await axiosInstance.put(
-        `/api/installations/${installationId}/${action}`, 
-        payload,
-        {
-          headers: {
-            'Authorization': `Bearer ${authStore.token}` 
-          }
-        }
-      );
-
-      const { installation: updatedInstallation, toastMessage } = response.data;
-
-      if (!updatedInstallation || !updatedInstallation._id) {
-        throw new Error(`Invalid response: ${action === 'approve' ? 'Approved' : 'Rejected'} installation data is missing or incomplete`);
-      }
-
-      installationsData.value.installations = installationsData.value.installations.map((installation: Installation) => 
-        installation._id === updatedInstallation._id ? updatedInstallation : installation
-      );
-
-      return {
-        installation: updatedInstallation,
-        toastMessage
-      };
+      const response = await axiosInstance.put(`/api/installations/${installationId}/${action}`, {
+        reason,
+        selectedService  // Make sure we're sending the selectedService in the request body
+      });
+      return response.data;
     } catch (error) {
-      if (error instanceof Error) {
-        console.error(`Error ${action}ing installation:`, error.stack);
-      }
+      console.error(`Error ${action}ing installation:`, error);
       throw error;
     }
   };
@@ -869,7 +839,7 @@ export const useMainStore = defineStore('main', () => {
         checklistData.value.items[index] = updatedItem;
       }
 
-      return updatedItem;
+      return response;
     } catch (error) {
       console.error('Error updating credit check:', error);
       throw error;
