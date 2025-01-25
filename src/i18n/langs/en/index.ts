@@ -7,6 +7,7 @@ import users from './users'
 import installations from './installations'
 import creditCheck from './creditCheck'
 import invoices from './invoices'
+import auth from './auth'
 
 export default {
     sidebar,
@@ -17,5 +18,6 @@ export default {
     users,
     installations,
     creditCheck,
-    invoices
+    invoices,
+    auth
 }

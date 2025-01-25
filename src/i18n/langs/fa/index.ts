@@ -1,3 +1,4 @@
+import auth from './auth'
 import installations from './installations'
 import sidebar from './sidebar'
 import branches from './branches'
@@ -9,6 +10,7 @@ import creditCheck from './creditCheck'
 import invoices from './invoices'
 
 export default {
+    auth,
     installations,
     sidebar,
     branches,

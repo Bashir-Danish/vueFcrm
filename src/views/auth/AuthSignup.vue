@@ -1,11 +1,13 @@
 <template>
   <form @submit.prevent="onSubmit" class="space-y-6">
     <div class="flex flex-col gap-2 text-center">
-      <h1 class="text-3xl font-semibold">{{ isInvited ? $t('Auth.register.completeRegistration') : $t('Auth.register.header') }}</h1>
+      <h1 class="text-3xl font-semibold">
+        {{ isInvited ? t('auth.register.completeRegistration') : t('auth.register.header') }}
+      </h1>
     </div>
     <div class="space-y-4">
       <div>
-        <Label for="name">{{ $t('Auth.register.name') }}</Label>
+        <Label for="name">{{ t('auth.register.name') }}</Label>
         <Input
           id="name"
           type="text"
@@ -14,7 +16,7 @@
         />
       </div>
       <div>
-        <Label for="email">{{ $t('Auth.register.email') }}</Label>
+        <Label for="email">{{ t('auth.register.email') }}</Label>
         <Input
           id="email"
           type="email"
@@ -24,7 +26,7 @@
         />
       </div>
       <div>
-        <Label for="password">{{ $t('Auth.register.password') }}</Label>
+        <Label for="password">{{ t('auth.register.password') }}</Label>
         <Input
           id="password"
           type="password"
@@ -38,12 +40,12 @@
       class="w-full"
       :disabled="isLoading"
     >
-      {{ isInvited ? $t('Auth.register.completeButton') : $t('Auth.register.button') }}
+      {{ isInvited ? t('auth.register.completeButton') : t('auth.register.button') }}
     </Button>
     <div v-if="!isInvited" class="text-center text-sm">
-      {{ $t('Auth.register.link-text') }}
+      {{ t('auth.register.link-text') }}
       <RouterLink to="/auth/signin" class="text-blue-600 hover:underline">
-        {{ $t('Auth.register.link') }}
+        {{ t('auth.register.link') }}
       </RouterLink>
     </div>
   </form>
@@ -58,6 +60,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from 'vue-i18n'
 import axios from '@/utils/axios'
 
 const router = useRouter()
@@ -65,6 +68,7 @@ const route = useRoute()
 const userStore = useUserStore()
 const authStore = useAuthStore()
 const { toast } = useToast()
+const { t } = useI18n()
 
 const info = ref({ name: '', email: '', password: '' })
 const isLoading = ref(false)
@@ -85,7 +89,7 @@ onMounted(async () => {
       toast({
         variant: 'destructive',
         title: 'Invalid Invitation',
-        description: 'The invitation link is invalid or has expired.',
+        description: t('auth.errors.invalid-invitation'),
       })
       router.push('/auth/signin')
     }
@@ -99,7 +103,7 @@ const onSubmit = async () => {
     toast({
       variant: 'destructive',
       title: 'Validation Error',
-      description: 'Please fill in all fields',
+      description: t('auth.errors.fill-all'),
     })
     return
   }
@@ -115,7 +119,7 @@ const onSubmit = async () => {
       toast({
         variant: 'default',
         title: 'Registration Completed',
-        description: 'Your account has been set up. Please log in.',
+        description: t('auth.success.registration-complete'),
       })
     } else {
       await userStore.register({
@@ -126,7 +130,7 @@ const onSubmit = async () => {
       toast({
         variant: 'default',
         title: 'Registration Successful',
-        description: 'Please log in with your new account.',
+        description: t('auth.success.registration'),
       })
     }
     router.push('/auth/signin')
@@ -135,7 +139,7 @@ const onSubmit = async () => {
     toast({
       variant: 'destructive',
       title: 'Registration Error',
-      description: (error as any).response?.data?.message || 'An error occurred during registration',
+      description: (error as any).response?.data?.message || t('auth.errors.registration'),
     })
   } finally {
     isLoading.value = false

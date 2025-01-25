@@ -154,17 +154,35 @@ const handleApprove = async () => {
   try {
     const selectedService = services.value.find(service => service.Service_Id === selectedPackageId.value);
     
+    if (!selectedService) {
+      throw new Error('Please select a service package before approving');
+    }
+
     const response = await mainStore.approveOrRejectInstallation(
       installationId.value, 
       'approve', 
       undefined,
-      selectedService
+      {
+        Service_Id: selectedService.Service_Id,
+        ServiceName: selectedService.ServiceName,
+        Description: selectedService.Description,
+        Price: selectedService.Price,
+        ServiceType: selectedService.ServiceType,
+        ISEnable: selectedService.ISEnable,
+        UserChoosable: selectedService.UserChoosable,
+        ResellerChoosable: selectedService.ResellerChoosable
+      }
     );
     
     toast.toast({ 
       title: 'Success', 
       description: response.toastMessage || 'Installation approved successfully!' 
     });
+
+    if (props.installationData?.customerId) {
+      console.log('Installation approved with service:', selectedService);
+    }
+
   } catch (error) {
     console.error("Error approving installation:", error);
     toast.toast({ 

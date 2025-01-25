@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from '@/utils/axios'
+import axiosInstance from '@/utils/axios'
 import router from '@/router'
 import CryptoJS from 'crypto-js'
+import axios from 'axios'
 
 const ENCRYPTION_KEY = 'FJKAIDFAJERKWJFKLASDJFAKSLFJLKFJLSDFHJLSHDF' 
 
@@ -43,27 +44,67 @@ export const useAuthStore = defineStore('auth', () => {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post('/api/users/login', { email, password })
-      token.value = response.data.accessToken
-      user.value = response.data.user
+      console.log('Attempting login to:', `${import.meta.env.VITE_API_URL}/api/users/login`);
       
-      if (token.value) {
-        localStorage.setItem('token', token.value)
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/users/login`, 
+        { email, password },
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        token.value = response.data.accessToken;
+        user.value = response.data.user;
+        
+        if (token.value) {
+          localStorage.setItem('token', token.value);
+        }
+        if (user.value) {
+          saveUserToLocalStorage(user.value);
+        }
+        
+        return {
+          success: true,
+          message: response.data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: response.data.message || 'Login failed'
+        };
       }
-      if (user.value) {
-        saveUserToLocalStorage(user.value)
-      }
-      console.log('Login successful, token set:', !!token.value);
-      return true
     } catch (error: any) {
-      console.error('Login failed:', error)
-      return false
+      console.error('Login error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      // Handle different types of errors
+      let errorMessage = 'Login failed';
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Unable to connect to the server. Please check if the server is running and try again.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return {
+        success: false,
+        message: errorMessage
+      };
     }
-  }
+  };
 
   const logout = async () => {
     try {
-      await axios.post('/api/auth/logout')
+      await axiosInstance.post('/api/auth/logout')
     } catch (error) {
       console.error('Logout failed:', error)
     } finally {
@@ -83,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing.value = true
     refreshPromise.value = new Promise(async (resolve) => {
       try {
-        const response = await axios.post('/api/users/refresh-token')
+        const response = await axiosInstance.post('/api/users/refresh-token')
         token.value = response.data.accessToken
         if (token.value) {
           localStorage.setItem('token', token.value)
@@ -120,6 +161,33 @@ export const useAuthStore = defineStore('auth', () => {
     return !!localStorage.getItem('token')
   })
 
+  const forgotPassword = async (payload: { email: string }) => {
+    try {
+      const response = await axiosInstance.post('/api/users/forgot-password', payload)
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to send OTP')
+    }
+  }
+
+  const verifyOTP = async (payload: { email: string; otp: string }) => {
+    try {
+      const response = await axiosInstance.post('/api/users/verify-otp', payload)
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Invalid OTP')
+    }
+  }
+
+  const resetPassword = async (payload: { resetToken: string; newPassword: string }) => {
+    try {
+      const response = await axiosInstance.post('/api/users/reset-password', payload)
+      return response.data
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to reset password')
+    }
+  }
+
   return {
     token,
     user,
@@ -128,6 +196,9 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     refreshToken,
     checkAuth,
-    isLoggedIn
+    isLoggedIn,
+    forgotPassword,
+    verifyOTP,
+    resetPassword
   }
 })

@@ -18,7 +18,7 @@ const roleBasedSidebarLinks = [
     label: "sidebar.dashboard",
     href: "/",
     icon: BarChart3,
-    access: ["admin", "noc", "installer", "financeAdmin","creditChecker", "cashier"],
+    access: ["admin", "noc", "installer","sales", "financeAdmin","creditChecker", "cashier"],
     show: true,
   },
   {
@@ -39,7 +39,7 @@ const roleBasedSidebarLinks = [
     label: "sidebar.sales.main",
     href: "/customer",
     icon: WalletCards,
-    access: ["admin", "cashier", "financeAdmin", "noc" , "installer"],
+    access: ["admin", "cashier","sales", "financeAdmin", "noc" , "installer"],
     show: true,
     children: [
       {
@@ -69,7 +69,7 @@ const roleBasedSidebarLinks = [
     label: "sidebar.equipment",
     href: "/equipment/list",
     icon: Package,
-    access: ["admin", "cashier"],
+    access: ["admin", "cashier" ,"sales"],
     show: true,
   },
   {
@@ -122,6 +122,13 @@ const roleBasedSidebarLinks = [
     icon: Settings,
     access: ["admin", "cashier", "noc", "financeAdmin", "sales", "installer","creditChecker"],
     show: true,
+  },
+  {
+    label: "sidebar.tasks",
+    href: "/reset-password",
+    icon: ClipboardList,
+    access: ["admin", "cashier", "noc", "financeAdmin", "sales", "installer","creditChecker"],
+    show: false,
   },
 ];
 

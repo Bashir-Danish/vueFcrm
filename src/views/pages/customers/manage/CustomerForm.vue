@@ -15,6 +15,7 @@ import { Service } from "@/types/types"
 import ScrollArea from '@/components/ui/scroll-area/ScrollArea.vue'
 import { useI18n } from 'vue-i18n';
 import { useToast } from "@/components/ui/toast/use-toast"
+import { useAuthStore } from '@/stores/auth';
 const { t } = useI18n();
 const { toast } = useToast()
 
@@ -25,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits(['submit'])
 
 const mainStore = useMainStore();
+const authStore = useAuthStore();
 
 const customerType = ref(props.customerData?.custType || 'individual');
 const username = ref(props.customerData?.username || '');
@@ -216,6 +218,7 @@ interface FormData {
     startDate: Date;
     paid: boolean;
   };
+  branch_id: string;
 }
 
 const selectedServiceId = ref<string | undefined>(undefined);
@@ -260,6 +263,7 @@ const handleSubmit = () => {
     previousPackage: localPreviousInternetPackage.value.trim(),
     internetUsage: internetUsage.value,
     terminationReason: selectedReasons,
+    branch_id: authStore.user.branch_id
   }
 
   if (customerType.value === 'individual') {

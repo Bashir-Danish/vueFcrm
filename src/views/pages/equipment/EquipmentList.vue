@@ -119,7 +119,7 @@ const handleEquipmentAdded = (newEquipment: Equipment) => {
   }
   
   // Increment the total count
-  equipmentData.value.totalCount++;
+  // equipmentData.value.totalCount++;
 };
 
 const handleEquipmentUpdated = async (updatedEquipment: Equipment) => {

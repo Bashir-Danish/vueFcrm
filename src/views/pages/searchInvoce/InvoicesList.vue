@@ -359,7 +359,9 @@ const getPaymentStatusText = (invoice: Invoice) => {
     case 'paid':
       return t("invoices.status.paid")
     case 'partially_paid':
-      return `${t("invoices.status.partiallyPaid")} (${formatCurrency(invoice.balance)})`
+      // Calculate total paid amount
+      const paidAmount = invoice.totalAmount - invoice.balance
+      return `${t("invoices.status.partiallyPaid")} (${formatCurrency(paidAmount)} / ${formatCurrency(invoice.totalAmount)})`
     case 'unpaid':
       return formatCurrency(invoice.balance)
     default:

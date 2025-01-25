@@ -51,7 +51,7 @@ export interface Service {
   ResellerChoosable: string;
 }
 
-export type Customer = {
+export interface Customer {
   _id?: string;
   customerId?: number;
   username: string;
@@ -63,30 +63,41 @@ export type Customer = {
   nid?: number;
   address?: string;
   companyName?: string;
-  devices: Array<{ device: any; quantity: number; paid: boolean }>;
-  licenseNo?: number;
-  date: Date;
-  customFields: Array<{ key: string; value: string }>;
+  licenseNo?: string | number;
   activity?: string;
-  phones: string[];
-  packageId?: { type: string; ref: 'Package' };
-  branch_id?: { type: string; ref: 'Branch' };
-  internetUsage?: "Yes" | "No";
-  terminationReason?: string;
-  familiarityWithUs?: string;
-  internetUsagePurpose?: string;
-  paymentHistory?: Array<{
-    date?: Date;
-    amount?: number;
-    description?: string;
+  phones?: string[];
+  branch_id?: string | Branch;
+  date?: Date;
+  customFields?: Array<{
+    key: string;
+    value: string;
+    _id?: string;
   }>;
+  internetUsage?: string;
+  internetUsagePurpose?: string;
+  previousPackage?: string;
+  familiarityWithUs?: string;
+  terminationReason?: string;
   isReturningCustomer?: boolean;
+  devices?: Array<{
+    device?: Equipment;
+    quantity?: number;
+    paid: boolean;
+    purchaseDate?: Date;
+    _id?: string;
+  }>;
   currentService?: {
     service: Service;
     startDate?: Date;
+    endDate?: Date;
     paid: boolean;
+    User_ServiceBase_Id?: string;
+    serviceStatus?: string;
   };
-};
+  paymentHistory?: any[];
+  deltaSibUserId?: string;
+  __v?: number;
+}
 
 export const CustomerMessages = {
   CREATE_SUCCESS: (name: string) => `${name} has been successfully added as a customer!`,
@@ -135,16 +146,41 @@ export interface AssignedTask {
   createdAt?: Date;
   updatedAt?: Date;
 }
-
 export interface Checklist {
   _id: string;
-  customerId: string | Customer;
+  customerId: Customer;
   totalPrice: number;
-  status: "pending" | "done" | "others";
+  type: 'device' | 'service';
+  status: 'pending' | 'done' | 'others';
+  isHidden: boolean;
+  service?: {
+    service: {
+      Service_Id: string;
+      ServiceName: string;
+      Description: string;
+      Price: string;
+      ServiceType: string;
+      ISEnable: string;
+      UserChoosable: string;
+      ResellerChoosable: string;
+    };
+    startDate: Date;
+    endDate: Date;
+    serviceStatus: string;
+    User_ServiceBase_Id: string;
+  };
+  devices?: Array<{
+    equipmentId: string | Equipment;
+    quantity: number;
+    _id: string;
+  }>;
+  branch_id?: string | Branch;
+  sentToQuickbooks: boolean;
+  customerCreatedInQB: boolean;
+  invoiceCreated: boolean;
+  isManual: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  unpaidDevices?: Array<{ name: string; price: number }>;
-  unpaidPackage?: { name: string; price: number };
 }
 
 export interface FormData {
@@ -170,6 +206,17 @@ export interface FormData {
   currentService?: {
     service: Service;
     startDate: Date;
+    endDate?: Date;
     paid: boolean;
   };
+}
+
+interface FetchChecklistParams {
+  page: number;
+  limit: number;
+  status: string;
+  type: string;
+  date?: string;
+  branch?: string;
+  [key: string]: string | number | undefined;
 }

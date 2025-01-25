@@ -1,0 +1,14 @@
+{
+  "creditCheck": {
+    "types": {
+      "all": "All",
+      "device": "Devices",
+      "service": "Services"
+    },
+    "status": {
+      "pending": "Pending",
+      "done": "Done",
+      "others": "Others"
+    }
+  }
+} 

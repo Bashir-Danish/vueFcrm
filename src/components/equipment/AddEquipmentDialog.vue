@@ -68,6 +68,7 @@ const handleSubmit = async () => {
       emit("equipment-updated", updatedEquipment);
     } else if (props.mode === 'add') {
       const newEquipment = await mainStore.addEquipment(equipmentData);
+      
       emit("equipment-added", newEquipment);
       resetForm();
     }

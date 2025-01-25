@@ -17,6 +17,12 @@ const authRoutes: RouteRecordRaw[] = [
                 meta: { allowUnauthenticated: true }
             },
             {
+                path: 'reset-password',
+                name: 'resetPassword',
+                component: () => import('@/views/pages/profile/ResetPassword.vue'),
+                meta: { requiresAuth: true }
+            },
+            {
                 path: '',
                 redirect: { name: 'signin' }
             }

@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
-  modelValue: Date
+  modelValue: Date,
+  class?: string 
 }>()
 
 const emit = defineEmits(['update:modelValue'])
@@ -63,7 +64,14 @@ const changeMonth = (direction: 'next' | 'prev') => {
 <template>
   <Popover>
     <PopoverTrigger as-child>
-      <Button variant="outline" class="w-[240px] justify-start text-left font-normal select-none" :dir="direction">
+      <Button 
+        variant="outline" 
+        :class="[
+          'w-[240px] justify-start text-left font-normal select-none',
+          props.class // Apply any custom classes passed in
+        ]"
+        :dir="direction"
+      >
         <CalendarIcon :class="[direction === 'rtl' ? 'ml-2' : 'mr-2', 'h-4 w-4']" />
         {{ formatDate }}
       </Button>

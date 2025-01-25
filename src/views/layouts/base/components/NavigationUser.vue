@@ -32,6 +32,10 @@
           <span class="select-none">Profile</span>
           <!-- <DropdownMenuShortcut>⌘P</DropdownMenuShortcut> -->
         </DropdownMenuItem>
+        <DropdownMenuItem class="flex items-center select-none" @click="navigateToResetPassword">
+          <LockIcon class="mr-2 h-4 w-4" />
+          <span class="select-none">{{ $t('auth.resetPassword.title') }}</span>
+        </DropdownMenuItem>
         <!-- <DropdownMenuSub>
           <DropdownMenuSubTrigger class="cursor-pointer flex items-center">
             <Code class="mr-2 h-4 w-4" />
@@ -80,7 +84,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu/index";
-import { User, LogOut } from "lucide-vue-next";
+import { User, LogOut, Lock as LockIcon } from "lucide-vue-next";
 import { useAuthStore } from "@/stores/auth";
 
 const authStore = useAuthStore();
@@ -93,5 +97,9 @@ const handleLogout = async () => {
 
 const navigateToProfile = () => {
   router.push("/profile");
+};
+
+const navigateToResetPassword = () => {
+  router.push("/profile/reset-password");
 };
 </script>

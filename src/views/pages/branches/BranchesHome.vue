@@ -31,7 +31,11 @@ const columns = computed(() => getColumns(t));
 
 const fetchData = async (page: number, limit: number, search: string) => {
   try {
-    await mainStore.fetchBranches(page, limit, search);
+    await mainStore.fetchBranches({
+      page,
+      limit,
+      search
+    });
   } catch (error) {
     console.error("Error fetching branches:", error);
   } finally {

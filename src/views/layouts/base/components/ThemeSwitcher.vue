@@ -20,7 +20,7 @@ const applyTheme = (newTheme: string) => {
   const root = window.document.documentElement
   root.classList.remove('light', 'dark')
   
-  const effectiveTheme = newTheme === 'system' ? getSystemTheme() : newTheme
+  const effectiveTheme = newTheme === 'dark' ? getSystemTheme() : newTheme
   root.classList.add(effectiveTheme)
   
   const themeColor = effectiveTheme === 'dark' ? '#020817' : '#fff'
@@ -44,12 +44,12 @@ onMounted(() => {
   if (storedTheme) {
     setTheme(storedTheme)
   } else {
-    setTheme('system')
+    setTheme('dark')
   }
   
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    if (theme.value === 'system') {
-      applyTheme('system')
+    if (theme.value === 'dark') {
+      applyTheme('dark')
     }
   })
 })

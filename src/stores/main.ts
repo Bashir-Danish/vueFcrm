@@ -63,6 +63,8 @@ export interface ChecklistData {
   totalPages: number;
   filterCounts: {
     status: { [key: string]: number };
+    type: { [key: string]: number };
+    location: { [key: string]: number };
   };
 }
 
@@ -84,6 +86,15 @@ interface InvoicesData {
     paidInvoices: number;
     unpaidInvoices: number;
   };
+}
+
+interface FetchChecklistParams {
+  page: number;
+  limit: number;
+  status: string;
+  type: string;
+  date?: string;
+  [key: string]: string | number | undefined;
 }
 
 export interface State {
@@ -154,7 +165,9 @@ export const useMainStore = defineStore('main', () => {
     limit: 10,
     totalPages: 0,
     filterCounts: {
-      status: {}
+      status: {},
+      type: {},
+      location: {}
     }
   });
 
@@ -199,21 +212,24 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
-  const fetchBranches = async (page: number = 1, limit: number = 10, search: string = "") => {
+  const fetchBranches = async (params = {}) => {
     try {
+      const authStore = useAuthStore();
       const response = await axiosInstance.get('/api/branches', {
-        params: {
-          page,
-          limit,
-          search
+        params,
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
         }
       });
+      
       branchesData.value = {
         branches: response.data.branches,
         totalCount: response.data.pagination.totalCount,
         page: response.data.pagination.page,
         limit: response.data.pagination.limit
       };
+      
+      return response.data;
     } catch (error) {
       console.error('Error fetching branches:', error);
       throw error;
@@ -735,34 +751,17 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
-  const fetchChecklistItems = async (page: number = 1, limit: number = 10, status: string = '') => {
+  const fetchChecklistItems = async (params: FetchChecklistParams) => {
     try {
-      const authStore = useAuthStore();
-      if (!authStore.isAuthenticated) {
-        throw new Error('User is not authenticated');
-      }
+      // Remove empty parameters
+      const cleanParams = Object.fromEntries(
+        Object.entries(params).filter(([_, value]) => value !== '' && value != null)
+      );
 
       const response = await axiosInstance.get('/api/creditcheck', {
-        params: {
-          page,
-          limit,
-          status
-        },
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
+        params: cleanParams
       });
-
-      checklistData.value = {
-        items: response.data.items,
-        totalCount: response.data.totalCount,
-        page: response.data.page,
-        limit: response.data.limit,
-        totalPages: response.data.totalPages,
-        filterCounts: response.data.filterCounts
-      };
-
-      return checklistData.value;
+      checklistData.value = response.data;
     } catch (error) {
       console.error('Error fetching checklist items:', error);
       throw error;
@@ -938,6 +937,77 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
+  const syncCreditCheck = async (ids: string[]) => {
+    try {
+      const authStore = useAuthStore();
+      if (!authStore.isAuthenticated) {
+        throw new Error('User is not authenticated');
+      }
+
+      const response = await axiosInstance.post(`/api/creditcheck/sync`, { ids }, {
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
+      });
+
+      // Update the local state if needed
+      if (response.data.checklists) {
+        response.data.checklists.forEach((updatedItem: any) => {
+          const index = checklistData.value.items.findIndex(item => item._id === updatedItem._id);
+          if (index !== -1) {
+            checklistData.value.items[index] = updatedItem;
+          }
+        });
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error syncing credit check:', error);
+      throw error;
+    }
+  };
+
+  const toggleManualStatus = async (id: string, isManual: boolean) => {
+    try {
+      const response = await axiosInstance.put(`/api/creditcheck/${id}/manual`, { isManual });
+      
+      // Update the item in the store
+      checklistData.value.items = checklistData.value.items.map(item => 
+        item._id === id ? response.data.checklist : item
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling manual status:', error);
+      throw error;
+    }
+  };
+
+  const toggleHideStatus = async (id: string) => {
+    try {
+      const response = await axiosInstance.put(`/api/creditcheck/${id}/hide`);
+      
+      // Remove the item from the list if it's hidden, or refresh the list if unhidden
+      if (response.data.checklist.isHidden) {
+        checklistData.value.items = checklistData.value.items.filter(item => item._id !== id);
+        checklistData.value.totalCount--;
+      } else {
+        // Refresh the entire list to show unhidden item in correct position
+        await fetchChecklistItems({
+          page: checklistData.value.page,
+          limit: checklistData.value.limit,
+          status: '', // Use current filters
+          type: '',
+        });
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error toggling hide status:', error);
+      throw error;
+    }
+  };
+
   return {
     branchesData,
     fetchBranches,
@@ -984,6 +1054,9 @@ export const useMainStore = defineStore('main', () => {
     fetchCustomerInvoices,
     makeInvoicePayment,
     searchInvoiceCustomers,
-    makeFullPayment
+    makeFullPayment,
+    syncCreditCheck,
+    toggleManualStatus,
+    toggleHideStatus
   }
 })

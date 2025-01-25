@@ -126,9 +126,18 @@ const createDefaultRouter = (router: Router): void => {
       },
       {
         path: "/profile",
-        name: "Profile",
-        component: () => import("@/views/pages/profile/ProfilePage.vue"),
-       
+        children: [
+          {
+            path: "",
+            name: "Profile",
+            component: () => import("@/views/pages/profile/ProfilePage.vue"),
+          },
+          {
+            path: "reset-password",
+            name: "ProfileResetPassword",
+            component: () => import("@/views/pages/profile/ResetPassword.vue"),
+          }
+        ]
       },
       {
         path: "/quickbooks-connect",

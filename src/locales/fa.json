@@ -1,0 +1,14 @@
+{
+  "creditCheck": {
+    "types": {
+      "all": "همه",
+      "device": "دستگاه‌ها",
+      "service": "سرویس‌ها"
+    },
+    "status": {
+      "pending": "در انتظار",
+      "done": "انجام شده",
+      "others": "سایر"
+    }
+  }
+} 
