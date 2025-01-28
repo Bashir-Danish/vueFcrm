@@ -78,4 +78,7 @@ export interface InvoicePaymentParams {
   amount: number;
   customerId: string;
   lineItemId: string;
+  depositToAccountId: string;
+  referenceNo?: string;
+  memo?: string;
 } 

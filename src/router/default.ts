@@ -78,6 +78,21 @@ const createDefaultRouter = (router: Router): void => {
         ]
       },
       {
+        path: "payments/payment",
+        name: "payment",
+        component: () => import("@/views/pages/payments/Payment.vue"),
+      },
+      {
+        path: "payments/receive/:customerId",
+        name: "receivePayment",
+        component: () => import("@/views/pages/payments/ReceivePayment.vue"),
+      },
+      {
+        path: "payments",
+        name: "payments",
+        component: () => import("@/views/pages/payments/PaymentsList.vue"),
+      },
+      {
         path: "creditcheck",
         name: "creditCheck",
         component: () =>

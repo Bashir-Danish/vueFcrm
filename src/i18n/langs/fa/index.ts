@@ -8,6 +8,7 @@ import customers from './customers'
 import users from './users'
 import creditCheck from './creditCheck'
 import invoices from './invoices'
+import payments from './payments'
 
 export default {
     auth,
@@ -19,5 +20,6 @@ export default {
     customers,
     users,
     creditCheck,
-    invoices
+    invoices,
+    payments
 } 

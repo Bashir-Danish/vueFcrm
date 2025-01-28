@@ -15,6 +15,11 @@ export default {
     settings: 'Settings',
     language: 'Select Language',
     logout: 'Logout',
+        payments: {
+        main: 'Payments',
+        payment: 'Payment',
+        list: 'Payments List'
+    },
     invoices: {
         main: 'Invoices',
         search: 'Search Invoices',

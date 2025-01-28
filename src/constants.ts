@@ -11,6 +11,7 @@ import {
   Building2,
   ClipboardList,
   Receipt,
+  CreditCard,
 } from 'lucide-vue-next';
 
 const roleBasedSidebarLinks = [
@@ -18,28 +19,28 @@ const roleBasedSidebarLinks = [
     label: "sidebar.dashboard",
     href: "/",
     icon: BarChart3,
-    access: ["admin", "noc", "installer","sales", "financeAdmin","creditChecker", "cashier"],
+    access: ["admin", "noc", "installer", "sales", "financeAdmin", "creditChecker", "cashier"],
     show: true,
   },
   {
     label: "sidebar.branches",
     href: "/branches",
     icon: Building2,
-    access: ["admin", "financeAdmin","cashier"],
+    access: ["admin", "financeAdmin"],
     show: true,
   },
   {
     label: "sidebar.tasks",
     href: "/tasks",
     icon: ClipboardList,
-    access: ["admin", "financeAdmin" , "installer"],
+    access: ["admin", "financeAdmin", "installer"],
     show: true,
   },
   {
     label: "sidebar.sales.main",
     href: "/customer",
     icon: WalletCards,
-    access: ["admin", "cashier","sales", "financeAdmin", "noc" , "installer"],
+    access: ["admin", "sales", "financeAdmin", "noc", "installer"],
     show: true,
     children: [
       {
@@ -69,7 +70,7 @@ const roleBasedSidebarLinks = [
     label: "sidebar.equipment",
     href: "/equipment/list",
     icon: Package,
-    access: ["admin", "cashier" ,"sales"],
+    access: ["admin", "sales"],
     show: true,
   },
   {
@@ -83,7 +84,7 @@ const roleBasedSidebarLinks = [
     label: "sidebar.installations",
     href: "/installations",
     icon: Router,
-    access: ["admin", "noc", "financeAdmin" , "installer"],
+    access: ["admin", "noc", "financeAdmin", "installer"],
     show: true,
   },
   {
@@ -110,24 +111,38 @@ const roleBasedSidebarLinks = [
     ]
   },
   {
+    label: "sidebar.payments.list",
+    href: "/payments",
+    icon: CreditCard,
+    access: ["admin", "cashier", "financeAdmin"],
+    show: true,
+  },
+  {
+    label: "sidebar.payments.payment",
+    href: "/payments/payment",
+    icon: CreditCard,
+    access: ["admin", "cashier", "financeAdmin"],
+    show: true,
+  },
+  {
     label: "sidebar.users",
     href: "/users",
     icon: UserCircle,
-    access: ["admin", "cashier", "noc"],
+    access: ["admin", "noc"],
     show: true,
   },
   {
     label: "sidebar.settings",
     href: "/settings",
     icon: Settings,
-    access: ["admin", "cashier", "noc", "financeAdmin", "sales", "installer","creditChecker"],
+    access: ["admin", "cashier", "noc", "financeAdmin", "sales", "installer", "creditChecker"],
     show: true,
   },
   {
     label: "sidebar.tasks",
     href: "/reset-password",
     icon: ClipboardList,
-    access: ["admin", "cashier", "noc", "financeAdmin", "sales", "installer","creditChecker"],
+    access: ["admin", "cashier", "noc", "financeAdmin", "sales", "installer", "creditChecker"],
     show: false,
   },
 ];

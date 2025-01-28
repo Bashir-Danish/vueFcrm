@@ -15,6 +15,11 @@ export default {
     settings: 'تنظیمات',
     language: 'انتخاب زبان',
     logout: 'خروج',
+    payments: {
+        main: 'پرداخت‌ها',
+        payment: 'پرداخت',
+        list: 'لیست پرداخت‌ها'
+    },
     invoices: {
         main: 'فاکتورها',
         search: 'جستجوی فاکتور',

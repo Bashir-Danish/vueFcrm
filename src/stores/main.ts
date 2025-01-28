@@ -88,6 +88,17 @@ interface InvoicesData {
   };
 }
 
+interface DepositAccount {
+  id: string;
+  name: string;
+  accountType: string;
+  accountSubType: string;
+  currentBalance: number;
+  active: boolean;
+  classification: string;
+  fullyQualifiedName: string;
+}
+
 interface FetchChecklistParams {
   page: number;
   limit: number;
@@ -831,11 +842,29 @@ export const useMainStore = defineStore('main', () => {
         }
       });
 
-      // Update the local state
+      // Update only the specific item in the list
       const updatedItem = response.data.checklist;
       const index = checklistData.value.items.findIndex(item => item._id === updatedItem._id);
       if (index !== -1) {
-        checklistData.value.items[index] = updatedItem;
+        // Keep the array reference but update the specific item
+        checklistData.value.items.splice(index, 1, updatedItem);
+      }
+
+      // Update filter counts if needed
+      if (checklistData.value.filterCounts) {
+        const oldStatus = checklistData.value.items[index]?.status;
+        const newStatus = updatedItem.status;
+        
+        if (oldStatus && newStatus && oldStatus !== newStatus) {
+          if (checklistData.value.filterCounts.status[oldStatus]) {
+            checklistData.value.filterCounts.status[oldStatus]--;
+          }
+          if (checklistData.value.filterCounts.status[newStatus] !== undefined) {
+            checklistData.value.filterCounts.status[newStatus]++;
+          } else {
+            checklistData.value.filterCounts.status[newStatus] = 1;
+          }
+        }
       }
 
       return response;
@@ -891,14 +920,29 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
-  const makeInvoicePayment = async ({ invoiceId, amount, customerId, lineItemId }: InvoicePaymentParams) => {
+  const fetchCustomerWithInvoices = async (customerId: string) => {
     try {
-      console.log('Making payment:', { invoiceId, amount, customerId, lineItemId });
+      const response = await axiosInstance.get(`/api/invoices/customer-invoices/${customerId}`);
+      const { customer, invoices, summary } = response.data;
+      invoicesData.value = { invoices, summary };
+      return { customer, invoices, summary };
+    } catch (error) {
+      console.error('Error fetching customer with invoices:', error);
+      throw error;
+    }
+  };
+
+  const makeInvoicePayment = async ({ invoiceId, amount, customerId, lineItemId, depositToAccountId, referenceNo, memo }: InvoicePaymentParams) => {
+    try {
+      console.log('Making payment:', { invoiceId, amount, customerId, lineItemId, depositToAccountId, referenceNo, memo });
       const response = await axiosInstance.post('/api/invoices/payment', {
         invoiceId,
         amount,
         customerId,
-        lineItemId
+        lineItemId,
+        depositToAccountId,
+        referenceNo,
+        memo
       });
       return response.data;
     } catch (error) {
@@ -907,10 +951,10 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
-  const searchInvoiceCustomers = async (search: string) => {
+  const searchInvoiceCustomers = async (search: string ,fromQb: boolean = true) => {
     try {
       const response = await axiosInstance.get('/api/invoices/search-customers', {
-        params: { search }
+        params: { search, fromQb }
       });
       return response.data;
     } catch (error) {
@@ -919,12 +963,13 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
-  const makeFullPayment = async (invoiceId: string, customerId: string) => {
+  const makeFullPayment = async (invoiceId: string, customerId: string, depositToAccountId: string) => {
     try {
-      console.log('Processing full payment:', { invoiceId, customerId });
+      console.log('Processing full payment:', { invoiceId, customerId, depositToAccountId });
       const response = await axiosInstance.post('/api/invoices/payment/full', {
         invoiceId,
-        customerId
+        customerId,
+        depositToAccountId
       });
       
       // Refresh invoice data after successful payment
@@ -1008,6 +1053,16 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
+  const fetchDepositAccounts = async () => {
+    try {
+      const response = await axiosInstance.get('/api/invoices/deposit-accounts');
+      return response.data as DepositAccount[];
+    } catch (error) {
+      console.error('Error fetching deposit accounts:', error);
+      throw error;
+    }
+  };
+
   return {
     branchesData,
     fetchBranches,
@@ -1052,11 +1107,13 @@ export const useMainStore = defineStore('main', () => {
     invoicesData,
     fetchInvoices,
     fetchCustomerInvoices,
+    fetchCustomerWithInvoices,
     makeInvoicePayment,
     searchInvoiceCustomers,
     makeFullPayment,
     syncCreditCheck,
     toggleManualStatus,
-    toggleHideStatus
+    toggleHideStatus,
+    fetchDepositAccounts
   }
 })

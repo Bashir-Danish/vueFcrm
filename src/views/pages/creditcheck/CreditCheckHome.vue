@@ -294,13 +294,29 @@ const handleConfirmAction = async () => {
         title: action === 'approve' ? "Approved" : "Rejected",
         description: response.data.message || `Credit check has been ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
       });
-      await fetchChecklistItems({
-        page: page.value,
-        limit: limit.value,
-        status: selectedStatus.value.join(','),
-        type: type.value !== 'all' ? type.value : '',
-        date: selectedDate.value ? selectedDate.value.toISOString() : ''
-      });
+
+      // Update the filter counts in the store if needed
+      if (mainStore.checklistData.filterCounts) {
+        const oldStatus = selectedItem.value.status;
+        const newStatus = response.data.checklist.status;
+        
+        if (oldStatus && newStatus && oldStatus !== newStatus) {
+          if (mainStore.checklistData.filterCounts.status[oldStatus]) {
+            mainStore.checklistData.filterCounts.status[oldStatus]--;
+          }
+          if (mainStore.checklistData.filterCounts.status[newStatus] !== undefined) {
+            mainStore.checklistData.filterCounts.status[newStatus]++;
+          } else {
+            mainStore.checklistData.filterCounts.status[newStatus] = 1;
+          }
+        }
+      }
+
+      // Update the specific item in the table
+      const index = mainStore.checklistData.items.findIndex(item => item._id === itemId);
+      if (index !== -1) {
+        mainStore.checklistData.items.splice(index, 1, response.data.checklist);
+      }
     } else {
       const errorMessage = response?.data?.message || 'Operation failed';
       throw new Error(errorMessage);
