@@ -48,33 +48,40 @@
                 <div v-if="searchResults.length > 0 && !loading" class="mt-8">
                     <ul class="space-y-3">
                         <li v-for="customer in searchResults" :key="customer._id"
-                            class="relative flex cursor-pointer select-none rounded-lg px-4 py-3 hover:bg-card hover:text-muted-foreground transition-all duration-200 group border border-border hover:border-primary/20">
+                            class="w-4/5 mx-auto relative flex cursor-pointer select-none rounded-lg px-4 py-3 hover:bg-card hover:text-muted-foreground transition-all duration-200 group border border-border hover:border-primary/20">
                             <div class="flex flex-row items-center w-full gap-4">
                                 <div class="flex-1 flex justify-between">
-                                    <div class="flex justify-between w-1/2">
-                                        <div class="flex flex-col"> 
-                                            <span class="font-medium text-base transition-colors truncate">
-                                                {{ customer.name }}
+                                    <!-- Left side: Name and username -->
+                                    <div class="flex flex-col w-1/3">
+                                        <!-- First row: Name and Company -->
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-medium text-base">
+                                                {{ customer.custType === 'business' ? customer.companyName : customer.name }}
                                             </span>
-                                            <span v-if="customer.username" class="text-sm text-muted-foreground">
-                                                @{{ customer.username }}
+                                            <span v-if="customer.custType === 'business'" class="text-sm text-muted-foreground">
+                                                ({{ customer.fullName }})
                                             </span>
                                         </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-sm text-muted-foreground">
-                                                {{ customer.email }}
-                                            </span>
-                                            <span class="text-sm text-muted-foreground">
-                                                {{ customer.address }}
-                                            </span>
+                                        
+                                        <!-- Second row: Username -->
+                                        <div class="text-sm text-muted-foreground">
+                                            <span v-if="customer.username">@{{ customer.username }}</span>
                                         </div>
                                     </div>
-                                    <div class="flex items-center gap-4">
+
+                                    <!-- Middle: Contact info -->
+                                    <div class="flex flex-col w-1/3 text-sm text-muted-foreground">
+                                        <span v-if="customer.phones">📱 {{ customer.phones }}</span>
+                                        <span v-if="customer.address">📍 {{ customer.address }}</span>
+                                    </div>
+
+                                    <!-- Right side: Action button -->
+                                    <div class="flex items-center">
                                         <Button 
                                             variant="outline" 
                                             size="sm"
                                             class="flex items-center gap-2"
-                                            @click.stop="navigateToPayment(customer._id || customer.id)"
+                                            @click.stop="navigateToPayment(customer._id)"
                                         >
                                             <CreditCard class="h-4 w-4" />
                                             {{ t('payments.actions.pay') }}
@@ -104,10 +111,14 @@ interface Customer {
     _id: string
     id?: string
     name: string
+    fullName: string
     email: string
-    phone: string
+    phones: string
     username?: string
     address?: string
+    quickbooksCustomerId?: string
+    custType: 'business' | 'personal'
+    companyName?: string
 }
 
 const route = useRoute()

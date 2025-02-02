@@ -830,7 +830,8 @@ onUnmounted(() => {
                   min="0"
                   step="0.01" 
                   v-model="deviceTotalPrice" 
-                  class="w-28 text-right text-sm h-7" 
+                  readonly
+                  class="w-28 text-right text-sm h-7 focus:ring focus:ring-opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 />
               </div>
             </div>
@@ -862,7 +863,8 @@ onUnmounted(() => {
                     min="0"
                     step="0.01" 
                     v-model="packagePrice" 
-                    class="w-28 text-right text-sm h-7" 
+                    readonly
+                    class="w-28 text-right text-sm h-7 focus:ring focus:ring-opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                   />
                 </div>
               </div>
@@ -870,13 +872,14 @@ onUnmounted(() => {
           </div>
 
           <!-- Total Price Section -->
-          <div v-if="selectedItem" class="bg-background border border-border p-2 rounded-lg">
+           <div v-if="selectedItem" class="bg-background border border-border p-2 rounded-lg">
             <div class="flex justify-between items-center">
               <h3 class="font-medium text-sm">{{ t('creditCheck.details.total.title') }}</h3>
               <div class="flex items-center gap-2">
                 <Input 
                   v-model="totalPrice" 
                   type="number" 
+                 
                   :disabled="selectedItem?.status === 'others' || 
                              (selectedItem?.invoiceCreated && selectedItem?.sentToQuickbooks)"
                   class="w-32"
@@ -888,7 +891,7 @@ onUnmounted(() => {
                 </span>
               </div>
             </div>
-          </div>
+          </div> 
 
           <!-- Total Section - Simplified -->
           

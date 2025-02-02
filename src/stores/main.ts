@@ -108,6 +108,21 @@ interface FetchChecklistParams {
   [key: string]: string | number | undefined;
 }
 
+interface PaymentsData {
+  payments: Array<{
+    id: string;
+    date: string;
+    customer: string;
+    amount: number;
+    status: string;
+    referenceNo?: string;
+  }>;
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface State {
   branchesData: BranchesData;
   equipmentData: EquipmentData;
@@ -117,6 +132,7 @@ export interface State {
   checklistData: ChecklistData;
   servicesData: ServicesData;
   invoicesData: InvoicesData;
+  paymentsData: PaymentsData;
   token: string | null;
 }
 
@@ -200,6 +216,14 @@ export const useMainStore = defineStore('main', () => {
       paidInvoices: 0,
       unpaidInvoices: 0
     }
+  });
+
+  const paymentsData = ref<PaymentsData>({
+    payments: [],
+    totalCount: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0
   });
 
   const token = ref<string | null>(null);
@@ -951,10 +975,15 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
-  const searchInvoiceCustomers = async (search: string ,fromQb: boolean = true) => {
+  const searchInvoiceCustomers = async (search: string = '', fromQb: boolean = false, page: number = 1) => {
     try {
       const response = await axiosInstance.get('/api/invoices/search-customers', {
-        params: { search, fromQb }
+        params: { 
+          search, 
+          fromQb,
+          page,
+          limit: 20
+        }
       });
       return response.data;
     } catch (error) {
@@ -1063,6 +1092,55 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
+  const fetchPayments = async (page: number = 1, limit: number = 10, search: string = '', customerId: string = '') => {
+    try {
+      const response = await axiosInstance.get('/api/invoices/payments', {
+        params: {
+          page,
+          limit,
+          search,
+          customerId
+        }
+      });
+      
+      paymentsData.value = {
+        payments: response.data.payments,
+        totalCount: response.data.pagination.totalCount,
+        page: response.data.pagination.page,
+        limit: response.data.pagination.limit,
+        totalPages: response.data.pagination.totalPages
+      };
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+      throw error;
+    }
+  };
+
+  const fetchCustomersDropdown = async (search: string = '', page: number = 1, limit: number = 20) => {
+    try {
+      const response = await axiosInstance.get('/api/invoices/customers-dropdown', {
+        params: { search, page, limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching customers dropdown:', error);
+      throw error;
+    }
+  };
+
+  const fetchInvoiceByNumber = async (invoiceNumber: string) => {
+    try {
+      console.log('Fetching invoice number:', invoiceNumber);
+      const response = await axiosInstance.get(`/api/invoices/${invoiceNumber}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching invoice:', error);
+      throw error;
+    }
+  };
+
   return {
     branchesData,
     fetchBranches,
@@ -1114,6 +1192,10 @@ export const useMainStore = defineStore('main', () => {
     syncCreditCheck,
     toggleManualStatus,
     toggleHideStatus,
-    fetchDepositAccounts
+    fetchDepositAccounts,
+    paymentsData,
+    fetchPayments,
+    fetchCustomersDropdown,
+    fetchInvoiceByNumber
   }
 })

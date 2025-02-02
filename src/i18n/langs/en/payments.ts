@@ -4,14 +4,19 @@ export default {
     title: 'Payments List',
     addPayment: 'Add Payment',
     noPayments: 'No payments found',
+    searchCustomers: 'Search customers...',
+    selectCustomer: 'Select a customer',
     columns: {
       id: 'ID',
       date: 'Date',
       customer: 'Customer',
       amount: 'Amount',
       status: 'Status',
+      referenceNo: 'Reference No',
       actions: 'Actions'
-    }
+    },
+    loading: 'Loading...',
+    loadingPayments: 'Loading payments...'
   },
   search: {
     title: 'Search Customers',
@@ -69,7 +74,9 @@ export default {
     select: 'Select...',
     clear: 'Clear',
     save: 'Save',
-    cancel: 'Cancel'
+    cancel: 'Cancel',
+    view: 'View',
+    submitting: 'Submitting...'
   },
   receive: {
     title: 'Receive Payment',
@@ -102,6 +109,7 @@ export default {
     memo: 'Memo',
     saveAndPrint: 'Save & Print',
     saveAndClose: 'Save & Close',
+    selectDepositAccount: 'Select Deposit Account',
     usageStats: {
       used: 'Used',
       remaining: 'Remaining'
@@ -112,6 +120,9 @@ export default {
     totalAmount: 'Total',
     deviceDetails: 'Device Details',
     servicePayment: 'Service Payment',
-    devicePayment: 'Device Payment'
+    devicePayment: 'Device Payment',
+    paymentHistory: 'Payment History',
+    totalToBePaid: 'Total To Be Paid',
+    remainingBalance: 'Remaining Balance',
   }
 }

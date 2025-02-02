@@ -4,14 +4,19 @@ export default {
     title: 'لیست پرداخت ها',
     addPayment: 'افزودن پرداخت',
     noPayments: 'هیچ پرداختی یافت نشد',
+    searchCustomers: 'جستجوی مشتریان',
+    selectCustomer: 'انتخاب مشتری',
     columns: {
       id: 'شناسه',
-      date: 'تاریخ',
+      date: 'تاریخ', 
       customer: 'مشتری',
       amount: 'مبلغ',
       status: 'وضعیت',
-      actions: 'عملیات'
-    }
+      actions: 'عملیات',
+      referenceNo: 'شماره مرجع'
+    },
+    loading: 'در حال بارگیری...',
+    loadingPayments: 'در حال بارگیری پرداخت‌ها...'
   },
   search: {
     title: 'جستجوی مشتریان',
@@ -68,7 +73,8 @@ export default {
     select: 'انتخاب کنید...',
     clear: 'پاک کردن',
     save: 'ذخیره',
-    cancel: 'لغو'
+    cancel: 'لغو',
+    view: 'نمایش'
   },
   receive: {
     title: 'دریافت پرداخت',
@@ -97,14 +103,19 @@ export default {
     paymentDate: 'تاریخ پرداخت',
     referenceNo: 'شماره مرجع',
     depositTo: 'واریز به',
+    selectDepositAccount: 'انتخاب حساب واریز',
     amount: 'مبلغ',
     packageNo: 'شماره پکیج',
     memo: 'یادداشت',
     saveAndPrint: 'ذخیره و چاپ',
     saveAndClose: 'ذخیره و بستن',
+    submitting: 'در حال ثبت...',
     usageStats: {
       used: 'استفاده شده',
       remaining: 'باقی مانده'
-    }
+    },
+    paymentHistory: 'تاریخچه پرداخت',
+    totalToBePaid: 'مجموع برای پرداخت',
+    remainingBalance: 'مانده حساب',
   }
-} 
+}

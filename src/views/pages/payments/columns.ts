@@ -1,52 +1,71 @@
-import { h } from 'vue';
-import { formatDate, formatCurrency } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { ColumnDef } from "@tanstack/vue-table";
+import { h, Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { CreditCard } from 'lucide-vue-next';
+import { formatDate, formatCurrency } from '@/utils/formatters';
+import { Button } from '@/components/ui/button';
+import { Eye, Loader2 } from 'lucide-vue-next';
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address?: string;
-}
-
-interface Row {
-  original: Customer;
-}
-
-export const useCustomerColumns = () => {
+export const createColumns = (onView: (payment: any) => void, loadingInvoiceId: Ref<string | null>): ColumnDef<any>[] => {
   const { t } = useI18n();
 
-  return [
+  const columns: ColumnDef<any>[] = [
     {
-      accessorKey: "name",
-      header: t('payments.search.columns.name'),
-      cell: ({ row }: { row: Row }) => row.original.name,
+      accessorKey: "id",
+      header: t('payments.list.columns.id'),
+      cell: ({ row }) => {
+        return h('div', { class: 'px-5' }, [
+          h('div', row.getValue('id'))
+        ]);
+      },
     },
     {
-      accessorKey: "email",
-      header: t('payments.search.columns.email'),
-      cell: ({ row }: { row: Row }) => row.original.email,
+      accessorKey: "date",
+      header: t('payments.list.columns.date'),
+      cell: ({ row }) => {
+        return h('div', {}, formatDate(row.getValue('date')));
+      },
     },
     {
-      accessorKey: "phone",
-      header: t('payments.search.columns.phone'),
-      cell: ({ row }: { row: Row }) => row.original.phone,
+      accessorKey: "customer",
+      header: t('payments.list.columns.customer'),
+      cell: ({ row }) => {
+        return h('div', {}, row.getValue('customer'));
+      },
+    },
+    {
+      accessorKey: "amount",
+      header: t('payments.list.columns.amount'),
+      cell: ({ row }) => {
+        return h('div', {}, formatCurrency(row.getValue('amount')));
+      },
+    },
+    {
+      accessorKey: "referenceNo",
+      header: t('payments.list.columns.referenceNo'),
+      cell: ({ row }) => {
+        return h('div', {}, row.getValue('referenceNo'));
+      },
     },
     {
       id: "actions",
-      header: t('payments.search.columns.actions'),
-      cell: ({ row }: { row: Row }) => h(Button, {
-        variant: 'secondary',
-        size: 'sm',
-        onClick: () => selectCustomer(row.original)
-      }, () => [
-        h(CreditCard, { class: 'mr-2 h-4 w-4' }),
-        t('common.select')
-      ]),
+      header: t('payments.list.columns.actions'),
+      cell: ({ row }) => {
+        const payment = row.original;
+        const isLoading = loadingInvoiceId.value === payment.id;
+        
+        return h(Button, {
+          variant: "ghost",
+          size: "icon",
+          disabled: isLoading,
+          onClick: () => onView(payment),
+        }, () => [
+          isLoading 
+            ? h(Loader2, { class: "h-4 w-4 animate-spin" })
+            : h(Eye, { class: "h-4 w-4" })
+        ]);
+      },
     },
   ];
-}; 
+
+  return columns;
+};

@@ -37,14 +37,19 @@ export const useInvoiceColumns = () => {
             class: 'flex items-center gap-2 hover:bg-muted p-1 rounded transition-colors'
           }, [
             h(ChevronRight, { size: 16 }),
-            row.original.docNumber
+            row.original.docNumber,
+            row.original.payments?.length > 0 && h('span', { 
+              class: 'text-sm text-muted-foreground ml-2' 
+            }, `-${row.original.payments.length}`)
           ])
         ),
         h(DialogContent, { class: 'max-w-4xl w-full' }, () => [
           h(DialogHeader, {}, () => [
             h(DialogTitle, {}, () => [
               h('div', { class: 'flex items-center gap-5' }, [
-                h('span', {}, `${t('invoices.lineItems.title')} - ${row.original.docNumber}`),
+                h('span', {}, `${t('invoices.lineItems.title')} - ${row.original.docNumber}${
+                  row.original.payments?.length > 0 ? `-${row.original.payments.length}` : ''
+                }`),
                 h(Badge, {
                   variant: row.original.balance === 0 ? 'default' : 'destructive', 
                   class: row.original.balance === 0 ? 'bg-green-500' : ''
@@ -136,6 +141,33 @@ export const useInvoiceColumns = () => {
               )
             ]
           }),
+
+          // Add payment history section before the footer
+          row.original.payments?.length > 0 && h('div', { 
+            class: 'mt-6 pt-4 border-t' 
+          }, [
+            h('h3', { class: 'font-medium mb-3' }, t('invoices.payments.history')),
+            h(Table, {}, {
+              default: () => [
+                h(TableHeader, {}, () => [
+                  h(TableRow, {}, () => [
+                    h(TableHead, {}, t('invoices.payments.sequence')),
+                    h(TableHead, {}, t('invoices.payments.date')),
+                    h(TableHead, { class: 'text-right' }, t('invoices.payments.amount'))
+                  ])
+                ]),
+                h(TableBody, {}, () => 
+                  row.original.payments.map((payment, index) => 
+                    h(TableRow, { key: payment.id }, () => [
+                      h(TableCell, {}, `${row.original.docNumber}-${index + 1}`),
+                      h(TableCell, {}, formatDate(payment.date)),
+                      h(TableCell, { class: 'text-right' }, formatCurrency(payment.amount))
+                    ])
+                  )
+                )
+              ]
+            })
+          ]),
 
           // Footer with Totals
           h('div', { 

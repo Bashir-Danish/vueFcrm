@@ -47,41 +47,42 @@
                                     <Input v-model="form.referenceNo" required readonly />
                                 </div>
                                 <!-- Amount -->
-                            <div class="form-control">
-                                <label class="label">
+                                <div class="form-control">
+                                    <label class="label">
                                         <span class="label-text">{{ t('payments.receive.amount') }}</span>
-                                </label>
+                                    </label>
                                     <div class="space-y-2">
-                                <Input v-model="form.amount" type="number" required />
+                                        <Input v-model="form.amount" type="number" required />
                                         <div class="flex justify-between text-xs">
                                             <div class="text-muted-foreground flex " v-if="form.totalAmount">
-                                                {{ t('payments.receive.totalAmount') }}: {{ parseFloat(form.totalAmount).toLocaleString() }} Af
+                                                {{ t('payments.receive.totalAmount') }}: {{
+                                                parseFloat(form.totalAmount).toLocaleString() }} Af
                                             </div>
                                             <div class="text-green-600" v-if="form.paidAmount">
-                                                {{ t('payments.receive.paidAmount') }}: {{ parseFloat(form.paidAmount).toLocaleString() }} Af
-                                        </div>
+                                                {{ t('payments.receive.paidAmount') }}: {{
+                                                parseFloat(form.paidAmount).toLocaleString() }} Af
+                                            </div>
                                         </div>
                                     </div>
-                            </div>
+                                </div>
                             </div>
                             <div class="form-control">
-                                    <label class="label">
-                                        <span class="label-text">{{ $t('payments.receive.depositTo') }}</span>
-                                    </label>
-                                    <Select v-model="form.depositTo">
-                                        <SelectTrigger class="w-full">
-                                            <SelectValue :placeholder="$t('payments.common.select')" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem v-for="account in depositAccounts" 
-                                                       :key="account.id" 
-                                                       :value="account.id">
-                                                {{ account.name }} ({{ account.accountType }})
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                           
+                                <label class="label">
+                                    <span class="label-text">{{ $t('payments.receive.depositTo') }}</span>
+                                </label>
+                                <Select v-model="form.depositTo">
+                                    <SelectTrigger class="w-full">
+                                        <SelectValue :placeholder="$t('payments.common.select')" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem v-for="account in depositAccounts" :key="account.id"
+                                            :value="account.id">
+                                            {{ account.name }} ({{ account.accountType }})
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
 
                             <!-- Service or Device Details -->
                             <div class="space-y-4">
@@ -163,8 +164,19 @@
                                 <Button variant="outline" type="submit">
                                     {{ $t('payments.receive.saveAndPrint') }}
                                 </Button>
-                                <Button type="submit">
-                                    {{ $t('payments.receive.saveAndClose') }}
+                                <Button type="submit" :disabled="isSubmitting">
+                                    <template v-if="isSubmitting">
+                                        <span class="animate-spin mr-2">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                            </svg>
+                                        </span>
+                                        {{ $t('payments.common.submitting') }}
+                                    </template>
+                                    <template v-else>
+                                        {{ $t('payments.receive.saveAndClose') }}
+                                    </template>
                                 </Button>
                             </div>
                         </form>
@@ -221,50 +233,78 @@
                     <!-- Recent Transactions Card -->
                     <Card>
                         <CardHeader>
-                            <CardTitle class="text-base md:text-lg font-semibold">
-                                {{ $t('payments.receive.transactionList') }}
-                            </CardTitle>
+                            <CardTitle>{{ $t('payments.receive.transactionList') }}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <RadioGroup v-model="selectedTransaction" class="space-y-1 md:space-y-3">
-                                <div v-for="(transaction, index) in transactions" :key="index"
-                                    class="flex items-center p-1 md:p-2 hover:bg-muted rounded-lg transition-colors cursor-pointer">
-                                    <div class="mr-3">
-                                        <RadioGroupItem 
-                                            :value="transaction.type"
-                                            :id="'transaction-' + index"
-                                            class="data-[state=checked]:border-primary data-[state=checked]:text-primary"
-                                            :disabled="!transaction.type.startsWith('Invoice')"
-                                        />
-                                    </div>
-                                    <Label 
-                                        :for="'transaction-' + index"
-                                        class="flex-1 cursor-pointer"
-                                        @click="transaction.type.startsWith('Invoice') && handleInvoiceClick(transaction)"
-                                    >
-                                        <div class="flex justify-between items-center">
+                            <RadioGroup v-model="selectedTransaction" class="space-y-2">
+                                <div v-for="transaction in transactions" :key="transaction.type">
+                                    <div class="relative group rounded-lg transition-colors"
+                                        @mouseenter="hoveredInvoice = transaction.type.split('#')[1]"
+                                        @mouseleave="hoveredInvoice = null" @mousemove="updateMousePosition">
+                                        <RadioGroupItem :id="transaction.type" :value="transaction.type" class="sr-only"
+                                            @click="handleInvoiceClick(transaction)" />
+                                        <Label :for="transaction.type"
+                                            class="flex justify-between items-center p-3 rounded-lg border cursor-pointer"
+                                            :class="{
+                                                'border-2 border-primary bg-primary/5': selectedTransaction === transaction.type,
+                                                'border-border hover:border-primary': selectedTransaction !== transaction.type
+                                            }">
                                             <div>
-                                                <div class="text-sm md:text-base font-medium">{{ transaction.date }}</div>
-                                                <div class="text-xs md:text-sm text-muted-foreground">
-                                                    {{ transaction.type }}
-                                                    <span v-if="transaction.status !== 'paid'" class="ml-2 text-xs">
-                                                        ({{ transaction.status }})
-                                                    </span>
+                                                <p class="font-medium">{{ transaction.type }}</p>
+                                                <p class="text-sm text-muted-foreground">{{ transaction.date }}</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="font-medium">{{ formatCurrency(Math.abs(transaction.amount))
+                                                    }}</p>
+                                                <p class="text-sm" :class="{
+                                                    'text-green-600': transaction.status === 'paid',
+                                                    'text-yellow-600': transaction.status === 'partially_paid',
+                                                    'text-red-600': transaction.status === 'unpaid'
+                                                }">{{ transaction.status  }}</p>
+                                            </div>
+                                        </Label>
+
+                                        <!-- Payment History Popup -->
+                                        <div v-if="hoveredInvoice === transaction.type.split('#')[1] && hasPayments(transaction.type)" 
+                                             class="fixed z-50 bg-card rounded-lg shadow-lg p-3 min-w-[300px] max-w-[400px]
+                                                        border border-border opacity-0 invisible group-hover:opacity-100 
+                                                        group-hover:visible transition-all duration-200 tooltip"
+                                            :style="getTooltipPosition()" 
+                                            @click.stop>
+                                            <div class="text-xs space-y-2">
+                                                <div class="font-semibold text-sm mb-2 text-foreground/90 border-b pb-2">
+                                                    {{ t('payments.receive.paymentHistory') }}
+                                                </div>
+                                                <div v-for="payment in getInvoicePayments(transaction.type)"
+                                                    :key="payment.id"
+                                                    class="flex justify-between py-1 hover:bg-muted/50 rounded px-1">
+                                                    <span class="text-muted-foreground">{{ formatDate(payment.date) }}</span>
+                                                    <span class="font-medium text-foreground">{{ formatCurrency(payment.amount) }}</span>
+                                                </div>
+
+                                                <!-- Total and Balance Section -->
+                                                <div class="border-t mt-2 pt-2 space-y-1">
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-muted-foreground">{{ t('payments.receive.totalToBePaid') }}</span>
+                                                        <span class="font-medium text-green-500">
+                                                            {{ transaction.totalAmount }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex justify-between text-sm">
+                                                        <span class="text-muted-foreground">{{ t('payments.receive.remainingBalance') }}</span>
+                                                        <span class="font-medium text-red-500">
+                                                            {{ formatCurrency(Math.abs(transaction.amount)) }}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="text-sm md:text-base font-medium"
-                                                :class="[
-                                                    transaction.type.startsWith('Payment') ? 'text-green-600' : 'text-destructive',
-                                                    selectedTransaction === transaction.type ? 'font-bold' : ''
-                                                ]">
-                                                {{ Math.abs(transaction.amount).toLocaleString() }} Af
-                                            </div>
                                         </div>
-                                    </Label>
+                                    </div>
                                 </div>
                             </RadioGroup>
                         </CardContent>
                     </Card>
+
                 </div>
 
                 <!-- Second Column -->
@@ -328,7 +368,7 @@
                                         <div class="text-xs md:text-sm text-muted-foreground"> {{
                                             $t('payments.receive.endDate') }} </div>
                                         <div class="text-sm md:text-base font-medium"> {{
-                                            formatDate(customerData?.currentService?.endDate) }} </div>
+                                            calculatedEndDate }} </div>
                                     </div>
                                 </div>
 
@@ -379,7 +419,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMainStore } from '@/stores/main'
 import { useI18n } from 'vue-i18n'
@@ -401,6 +441,7 @@ import {
     SelectValue
 } from "@/components/ui/select"
 import { Label } from '@/components/ui/label'
+import { formatCurrency } from '@/utils/formatters'
 
 interface Customer {
     _id: string;
@@ -426,6 +467,7 @@ interface Transaction {
     amount: number;
     status: string;
     memo: string;
+    totalAmount: number;
 }
 
 interface Invoice {
@@ -488,10 +530,15 @@ const form = ref({
 
 const selectedInvoiceType = ref<'service' | 'device' | null>(null)
 const selectedInvoiceItems = ref<any[]>([])
-const selectedTransaction = ref<string | undefined>(undefined)
+const selectedTransaction = ref<string>('')
+const hoveredInvoice = ref<string | null>(null)
+const mousePosition = ref({ x: 0, y: 0 })
+const isSubmitting = ref(false)
 
 const handleSubmit = async () => {
     try {
+        isSubmitting.value = true;  // Start loading
+        
         if (!form.value.depositTo) {
             toast({
                 title: 'Error',
@@ -501,18 +548,13 @@ const handleSubmit = async () => {
             return;
         }
 
-        if (!selectedTransaction.value) {
-            toast({
-                title: 'Error',
-                description: t('payments.receive.selectTransaction'),
-                variant: 'destructive'
-            });
-            return;
-        }
+        // Get the base invoice number by removing the payment suffix
+        const baseInvoiceNumber = form.value.referenceNo.split('-').slice(0, -1).join('-');
+        console.log('Looking for invoice with number:', baseInvoiceNumber); // Debug log
 
-        const invoice = invoices.value.find(inv => 
-            inv.docNumber === selectedTransaction.value?.split('#')[1]
-        );
+        // Find the invoice using the base number
+        const invoice = invoices.value.find(inv => inv.docNumber === baseInvoiceNumber);
+        console.log('Found invoice:', invoice); // Debug log
 
         if (!invoice) {
             toast({
@@ -532,14 +574,24 @@ const handleSubmit = async () => {
             return;
         }
 
+        const paymentAmount = parseFloat(form.value.amount);
+        if (isNaN(paymentAmount) || paymentAmount <= 0) {
+            toast({
+                title: 'Error',
+                description: t('payments.receive.invalidAmount'),
+                variant: 'destructive'
+            });
+            return;
+        }
+
         // Create payment data
         const paymentData = {
             invoiceId: invoice.id,
-            amount: parseFloat(form.value.amount),
+            amount: paymentAmount,
             customerId: customerData.value.quickbooksCustomerId,
             lineItemId: invoice.id,
             depositToAccountId: form.value.depositTo,
-            referenceNo: form.value.referenceNo || invoice.docNumber,
+            referenceNo: form.value.referenceNo, // Keep the full reference number with suffix
             memo: form.value.memo || `Payment for invoice #${invoice.docNumber}`
         };
 
@@ -550,17 +602,17 @@ const handleSubmit = async () => {
         if (response.success) {
             // Refresh customer data and invoices using MongoDB ID
             const result = await mainStore.fetchCustomerWithInvoices(customerData.value._id);
-            
+
             // Update local data
             customerData.value = result.customer as Customer;
             invoices.value = result.invoices;
             transactions.value = transformInvoicesToTransactions(result.invoices);
-            
+
             toast({
                 title: 'Success',
                 description: t('payments.receive.paymentSuccess'),
             });
-            
+
             // Clear form
             handleClear();
         }
@@ -571,6 +623,8 @@ const handleSubmit = async () => {
             description: error instanceof Error ? error.message : 'Payment failed',
             variant: 'destructive'
         });
+    } finally {
+        isSubmitting.value = false;  // Stop loading
     }
 };
 
@@ -595,7 +649,7 @@ const handleFullPayment = async (invoice: Invoice) => {
         }
 
         const response = await mainStore.makeFullPayment(
-            invoice.id, 
+            invoice.id,
             customerData.value.quickbooksCustomerId,
             form.value.depositTo
         );
@@ -603,17 +657,17 @@ const handleFullPayment = async (invoice: Invoice) => {
         if (response.success) {
             // Refresh customer data and invoices using MongoDB ID
             const result = await mainStore.fetchCustomerWithInvoices(customerData.value._id);
-            
+
             // Update local data
             customerData.value = result.customer as Customer;
             invoices.value = result.invoices;
             transactions.value = transformInvoicesToTransactions(result.invoices);
-            
+
             toast({
                 title: 'Success',
                 description: t('payments.receive.fullPaymentSuccess'),
             });
-            
+
             // Clear form
             handleClear();
         }
@@ -628,7 +682,7 @@ const handleFullPayment = async (invoice: Invoice) => {
 };
 
 const handleClear = () => {
-    selectedTransaction.value = undefined;
+    selectedTransaction.value = '';
     form.value = {
         customerName: customerData.value?.name || '',
         customerLastName: customerData.value?.lastName || '',
@@ -649,52 +703,70 @@ const handleClear = () => {
 };
 
 const handleInvoiceClick = (transaction: Transaction) => {
-    // Extract invoice number from the transaction type
-    const invoiceNumber = transaction.type.split('#')[1]
-    const invoice = invoices.value.find((inv: Invoice) => inv.docNumber === invoiceNumber)
+    console.log('Selected transaction:', transaction.type);
+    selectedTransaction.value = transaction.type;
 
-    if (!invoice) return
+    // Extract invoice number from the transaction type
+    const invoiceNumber = transaction.type.split('#')[1];
+    const invoice = invoices.value.find((inv: Invoice) => inv.docNumber === invoiceNumber);
+
+    if (!invoice) return;
 
     // Reset form
-    handleClear()
+    handleClear();
 
-    // Set common fields
-    form.value.paymentDate = new Date()
-    form.value.referenceNo = invoice.docNumber
-    form.value.totalAmount = invoice.totalAmount.toString()
-
-    // Calculate total paid amount from all payments
-    const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
-    // Calculate actual remaining balance
-    const remainingBalance = invoice.totalAmount - totalPaid;
+    // Get the number of existing payments for this invoice
+    const existingPaymentsCount = invoice.payments?.length || 0;
     
-    // Determine if invoice is fully paid
-    const isFullyPaid = Math.abs(remainingBalance) < 0.01; // Using small threshold for floating point comparison
+    // Generate the next reference number by adding 1 to the count
+    const nextPaymentNumber = existingPaymentsCount + 1;
+    const nextReferenceNumber = `${invoice.docNumber}-${nextPaymentNumber}`;
 
-    // Check if it's a service invoice by looking at line items
+    // Calculate total paid amount and remaining balance
+    const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
+    const remainingBalance = Math.max(0, invoice.totalAmount - totalPaid);
+
+    // Set the form values
+    form.value = {
+        ...form.value,
+        customerName: customerData.value?.name || '',
+        customerLastName: customerData.value?.lastName || '',
+        customerId: customerData.value?._id || '',
+        username: customerData.value?.username || '',
+        paymentDate: new Date(),
+        referenceNo: nextReferenceNumber,
+        totalAmount: invoice.totalAmount.toString(),
+        paidAmount: totalPaid.toString(),
+        amount: remainingBalance.toString(),
+        memo: invoice.memo || ''
+    };
+
+    // Rest of the existing code remains unchanged...
     const isServiceInvoice = invoice.lineItems.some((item: any) =>
         item.description === customerData.value?.currentService?.service.ServiceName
-    )
+    );
 
     if (isServiceInvoice) {
-        selectedInvoiceType.value = 'service'
-        selectedInvoiceItems.value = []
-        
-        // Fill service related fields
-        form.value.package = customerData.value?.currentService?.service.ServiceName || ''
-        form.value.startDate = new Date(customerData.value?.currentService?.startDate || '')
-        form.value.endDate = new Date(customerData.value?.currentService?.endDate || '')
+        selectedInvoiceType.value = 'service';
+        selectedInvoiceItems.value = [];
+
+        const startDate = new Date(customerData.value?.currentService?.startDate || '');
+        const endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + 6);
+
+        form.value = {
+            ...form.value,
+            package: customerData.value?.currentService?.service.ServiceName || '',
+            startDate: startDate,
+            endDate: endDate
+        };
     } else {
-        selectedInvoiceType.value = 'device'
-        // Show all line items for reference
+        selectedInvoiceType.value = 'device';
         selectedInvoiceItems.value = invoice.lineItems;
-        form.value.package = ''
+        form.value.package = '';
     }
 
-    // Set the amounts consistently
-    form.value.paidAmount = totalPaid.toString()
-    form.value.amount = remainingBalance.toString()
-    form.value.memo = invoice.memo
+    console.log('Form updated:', form.value);
 };
 
 const formatDate = (dateString?: string) => {
@@ -718,16 +790,16 @@ const fetchAccounts = async () => {
 // Transform invoices into transactions with payment status
 const transformInvoicesToTransactions = (invoices: Invoice[]) => {
     const transactions: Transaction[] = [];
-    
+
     invoices.forEach(invoice => {
         // Calculate total paid amount from all payments
         const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
         // Calculate actual remaining balance
         const remainingBalance = invoice.totalAmount - totalPaid;
-        
+
         // Determine if invoice is fully paid
         const isFullyPaid = Math.abs(remainingBalance) < 0.01; // Using small threshold for floating point comparison
-        
+
         // Only include invoices that are not fully paid
         if (!isFullyPaid) {
             transactions.push({
@@ -735,15 +807,88 @@ const transformInvoicesToTransactions = (invoices: Invoice[]) => {
                 type: `Invoice #${invoice.docNumber}`,
                 amount: -remainingBalance,
                 status: remainingBalance === invoice.totalAmount ? 'unpaid' : 'partially_paid',
-                memo: invoice.memo
+                memo: invoice.memo,
+                totalAmount: invoice.totalAmount
             });
         }
     });
 
     // Sort transactions by date, most recent first
-    return transactions.sort((a, b) => 
+    return transactions.sort((a, b) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
     );
+};
+
+const getTooltipPosition = () => {
+    const offset = 10;
+    return {
+        left: `${mousePosition.value.x + offset}px`,
+        top: `${mousePosition.value.y + offset}px`
+    };
+};
+
+const updateMousePosition = (event: MouseEvent) => {
+    mousePosition.value = {
+        x: event.clientX,
+        y: event.clientY
+    };
+};
+
+const getInvoicePayments = (transactionType: string) => {
+    const invoiceNumber = transactionType.split('#')[1];
+    const invoice = invoices.value.find(inv => inv.docNumber === invoiceNumber);
+    return invoice?.payments || [];
+};
+
+const getInvoiceTotalPaid = (transactionType: string) => {
+    const payments = getInvoicePayments(transactionType);
+    return payments.reduce((sum, payment) => sum + payment.amount, 0);
+};
+
+// Add a watch to validate amount input
+watch(() => form.value.amount, (newAmount) => {
+    const amount = parseFloat(newAmount);
+    const totalAmount = parseFloat(form.value.totalAmount);
+    const paidAmount = parseFloat(form.value.paidAmount);
+    const remainingBalance = totalAmount - paidAmount;
+
+    if (amount > remainingBalance) {
+        form.value.amount = remainingBalance.toString();
+        toast({
+            title: 'Warning',
+            description: t('payments.receive.amountAdjusted'),
+            variant: 'default'
+        });
+    }
+});
+
+// Add this computed property
+const calculatedEndDate = computed(() => {
+    if (!customerData.value?.currentService?.startDate) return '';
+
+    const startDate = new Date(customerData.value.currentService.startDate);
+    const serviceName = customerData.value.currentService.service.ServiceName;
+    const duration = getServiceDurationInMonths(serviceName);
+
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + duration);
+
+    return formatDate(endDate.toISOString());
+});
+
+// Make sure getServiceDurationInMonths is defined
+const getServiceDurationInMonths = (packageName: string) => {
+    if (packageName.includes('6-Month')) return 6;
+    if (packageName.includes('3-Month')) return 3;
+    if (packageName.includes('12-Month')) return 12;
+    return 1; // default to 1 month if no duration found
+};
+
+// Add this computed property to check if an invoice has payments
+const hasPayments = (transactionType: string) => {
+    const invoiceNumber = transactionType.split('#')[1];
+    const invoice = invoices.value.find(inv => inv.docNumber === invoiceNumber);
+    return (invoice?.payments ?? []).length > 0;
 };
 
 onMounted(async () => {
@@ -764,7 +909,7 @@ onMounted(async () => {
             mainStore.fetchCustomerWithInvoices(customerId).then(({ customer, invoices: fetchedInvoices }) => {
                 customerData.value = customer as Customer
                 invoices.value = fetchedInvoices
-                
+
                 // Transform invoices into transactions including payments
                 transactions.value = transformInvoicesToTransactions(fetchedInvoices);
             })
@@ -782,3 +927,18 @@ onMounted(async () => {
     }
 })
 </script>
+
+<style scoped>
+.tooltip {
+    pointer-events: none;
+}
+
+/* Add these styles if needed */
+.border-primary {
+    border-color: hsl(var(--primary));
+}
+
+.bg-primary\/5 {
+    background-color: hsl(var(--primary) / 0.05);
+}
+</style>

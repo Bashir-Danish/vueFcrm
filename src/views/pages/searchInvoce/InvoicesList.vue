@@ -23,12 +23,25 @@ import { MapPin, Search, SearchIcon } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { Trash2Icon } from "lucide-vue-next";
 import { Invoice, LineItem, Payment, InvoicePaymentParams } from "@/types/invoice";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
 
 // Add this interface definition
 interface PaymentAmounts {
   [invoiceId: string]: {
     [lineItemId: string]: number;
   };
+}
+
+interface DepositAccount {
+  id: string;
+  name: string;
+  accountType: string;
 }
 
 const route = useRoute();
@@ -46,6 +59,8 @@ const searchResults = ref<any[]>([]);
 const isSearching = ref(false);
 const expandedRows = ref<string>('');
 const paymentAmounts = ref<PaymentAmounts>({});
+const depositAccounts = ref<DepositAccount[]>([]);
+const selectedDepositAccounts = ref<{ [key: string]: string }>({});
 
 const toggleRow = (invoiceId: string) => {
   if (expandedRows.value === invoiceId) {
@@ -186,7 +201,7 @@ watch(() => search.value, (newValue) => {
 });
 
 // Initialize from URL params
-onMounted(() => {
+onMounted(async () => {
   const searchParam = route.query.search as string;
   if (searchParam) {
     search.value = searchParam;
@@ -195,6 +210,7 @@ onMounted(() => {
     }
   }
   document.addEventListener("click", handleClickOutside);
+  await fetchDepositAccounts();
 });
 
 const getLineItemPaymentAmount = (invoiceId: string, lineItemId: string): number => {
@@ -218,63 +234,122 @@ const setLineItemPaymentAmount = (invoiceId: string, lineItemId: string, value: 
 
 const handlePayment = async (invoiceId: string) => {
   try {
-    // Implement your payment logic here
-    console.log(`Processing full payment for invoice ${invoiceId}`);
-    // After successful payment, refresh the invoice data
-    const customer = searchResults.value.find(c => 
-      mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId)?.customer?.quickbooksCustomerId === c.id
-    );
-    if (customer) {
-      await mainStore.fetchCustomerInvoices(customer.id);
+    const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    // Generate the next payment sequence number
+    const nextPaymentNumber = (invoice.payments?.length || 0) + 1;
+    const referenceNo = `${invoice.docNumber}-${nextPaymentNumber}`;
+
+    // Create payment data
+    const paymentData: InvoicePaymentParams = {
+      invoiceId: invoice.id,
+      amount: invoice.balance,
+      customerId: invoice.customerRef.value,
+      lineItemId: invoice.id,
+      depositToAccountId: selectedDepositAccounts.value[invoiceId],
+      referenceNo: referenceNo,
+      memo: `Payment ${nextPaymentNumber} for invoice #${invoice.docNumber}`
+    };
+
+    console.log('Processing payment with data:', paymentData);
+    
+    const response = await mainStore.makeInvoicePayment(paymentData);
+    
+    if (response.success) {
+      toast({
+        title: t('invoices.payment.success'),
+        description: t('invoices.payment.successMessage', { reference: referenceNo }),
+      });
+
+      // Refresh the invoice data
+      const customer = searchResults.value.find(c => 
+        invoice.customerRef.value === c.id
+      );
+      if (customer) {
+        await mainStore.fetchCustomerInvoices(customer.id);
+      }
     }
   } catch (error) {
     console.error('Payment failed:', error);
+    toast({
+      title: t('invoices.payment.error'),
+      description: error instanceof Error ? error.message : 'Payment failed',
+      variant: 'destructive'
+    });
   }
 };
 
-const handleLineItemPayment = async (invoice: Invoice, lineItem: LineItem) => {
+const fetchDepositAccounts = async () => {
   try {
-    const amount = getLineItemPaymentAmount(invoice.id, lineItem.id);
-    
-    if (!amount || amount <= 0 || amount > lineItem.remainingBalance) {
-      toast({
-        title: t('invoices.payment.error'),
-        description: amount <= 0 
-          ? t('invoices.payment.invalidAmount')
-          : t('invoices.payment.exceedsBalance'),
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!invoice.customerRef?.value) {
-      throw new Error('Customer ID is missing');
-    }
-
-    await mainStore.makeInvoicePayment({
-      invoiceId: invoice.id,
-      amount,
-      customerId: invoice.customerRef.value,
-      lineItemId: lineItem.id
-    });
-
-    setLineItemPaymentAmount(invoice.id, lineItem.id, 0);
-
-    toast({
-      title: t('invoices.payment.success'),
-      description: t('invoices.payment.successMessage', { 
-        amount: formatCurrency(amount),
-        item: lineItem.description
-      }),
-      variant: 'default'
-    });
-
-    if (invoice?.customerRef?.value) {
-      await mainStore.fetchCustomerInvoices(invoice.customerRef.value);
-    }
-
+    depositAccounts.value = await mainStore.fetchDepositAccounts();
   } catch (error) {
-    console.error('Payment failed:', error);
+    console.error('Error fetching deposit accounts:', error);
+    toast({
+      title: t('invoices.payment.error'),
+      description: error instanceof Error ? error.message : 'Failed to fetch deposit accounts',
+      variant: 'destructive'
+    });
+  }
+};
+
+const handleLineItemPayment = async (invoiceId: string, lineItemId: string) => {
+  try {
+    const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) {
+      throw new Error('Invoice not found');
+    }
+
+    const lineItem = invoice.lineItems.find(item => item.id === lineItemId);
+    if (!lineItem) {
+      throw new Error('Line item not found');
+    }
+
+    // Generate the next payment sequence number
+    const nextPaymentNumber = (invoice.payments?.length || 0) + 1;
+    const referenceNo = `${invoice.docNumber}-${nextPaymentNumber}`;
+
+    const amount = getLineItemPaymentAmount(invoiceId, lineItemId);
+    if (!amount) {
+      throw new Error('Payment amount is required');
+    }
+
+    // Create payment data
+    const paymentData: InvoicePaymentParams = {
+      invoiceId: invoice.id,
+      amount: amount,
+      customerId: invoice.customerRef.value,
+      lineItemId: lineItemId,
+      depositToAccountId: selectedDepositAccounts.value[invoiceId],
+      referenceNo: referenceNo,
+      memo: `Payment ${nextPaymentNumber} for line item in invoice #${invoice.docNumber}`
+    };
+
+    console.log('Processing line item payment with data:', paymentData);
+    
+    const response = await mainStore.makeInvoicePayment(paymentData);
+    
+    if (response.success) {
+      toast({
+        title: t('invoices.payment.success'),
+        description: t('invoices.payment.successMessage', { reference: referenceNo }),
+      });
+
+      // Reset the payment amount
+      setLineItemPaymentAmount(invoiceId, lineItemId, 0);
+
+      // Refresh the invoice data
+      const customer = searchResults.value.find(c => 
+        invoice.customerRef.value === c.id
+      );
+      if (customer) {
+        await mainStore.fetchCustomerInvoices(customer.id);
+      }
+    }
+  } catch (error) {
+    console.error('Line item payment failed:', error);
     toast({
       title: t('invoices.payment.error'),
       description: error instanceof Error ? error.message : 'Payment failed',
@@ -299,8 +374,22 @@ const handleFullPayment = async (invoice: Invoice) => {
       throw new Error('Customer ID is missing');
     }
 
+    // Check if deposit account is selected
+    if (!selectedDepositAccounts.value[invoice.id]) {
+      toast({
+        title: t('invoices.payment.error'),
+        description: t('invoices.payment.selectDepositAccount'),
+        variant: 'destructive'
+      });
+      return;
+    }
+
     // Use the new full payment method
-    await mainStore.makeFullPayment(invoice.id, invoice.customerRef.value);
+    await mainStore.makeFullPayment(
+      invoice.id, 
+      invoice.customerRef.value,
+      selectedDepositAccounts.value[invoice.id]
+    );
 
     toast({
       title: t('invoices.payment.success'),
@@ -662,6 +751,23 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                       <div class="flex items-center justify-end gap-2">
                                         <!-- Only show input and button if not fully paid -->
                                         <template v-if="item.remainingBalance > 0">
+                                          <Select
+                                            v-model="selectedDepositAccounts[invoice.id]"
+                                            :disabled="selectedDepositAccounts[invoice.id]"
+                                          >
+                                            <SelectTrigger class="w-[200px]">
+                                              <SelectValue :placeholder="t('payments.receive.selectDepositAccount')" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem 
+                                                v-for="account in depositAccounts" 
+                                                :key="account.id" 
+                                                :value="account.id"
+                                              >
+                                                {{ account.name }} ({{ account.accountType }})
+                                              </SelectItem>
+                                            </SelectContent>
+                                          </Select>
                                           <Input
                                             type="number"
                                             :placeholder="t('invoices.payment.amount')"
@@ -679,7 +785,7 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                           <Button 
                                             variant="default" 
                                             size="sm"
-                                            @click.stop="handleLineItemPayment(invoice, item)"
+                                            @click.stop="handleLineItemPayment(invoice.id, item.id)"
                                             :disabled="!getLineItemPaymentAmount(invoice.id, item.id) || 
                                                        getLineItemPaymentAmount(invoice.id, item.id) <= 0"
                                             class="whitespace-nowrap"
@@ -721,7 +827,6 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                             <Trash2Icon class="h-4 w-4" />
                                           </Button>
                                         </template>
-                                        <!-- Don't show anything if fully paid -->
                                       </div>
                                     </td>
                                   </tr>
