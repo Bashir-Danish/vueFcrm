@@ -22,7 +22,7 @@
 
 <script setup lang="ts">
 import { inject, ref } from 'vue'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import {  FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { User } from '@/views/auth/User'
 import { Input } from '@/components/ui/input'
 import { Loader2 } from 'lucide-vue-next'
