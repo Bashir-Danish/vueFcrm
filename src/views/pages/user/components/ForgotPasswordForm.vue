@@ -20,8 +20,8 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, inject, ref } from 'vue'
+<script setup lang="ts">
+import { inject, ref } from 'vue'
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { User } from '@/views/auth/User'
 import { Input } from '@/components/ui/input'
@@ -32,42 +32,24 @@ import { useForm } from 'vee-validate'
 import { Button } from '@/components/ui/button'
 import router from '@/router'
 
-export default defineComponent({
-  name: 'ForgotPasswordForm',
-  components: {
-    Button,
-    Input,
-    FormControl, FormField, FormItem, FormLabel, FormMessage,
-    Loader2
-  },
-  setup()
-  {
-    const $t: any = inject('$t')
-    let loading = ref(false)
-    const formState = ref<User>({email: undefined})
-    const validator = z
-        .object({
-          email: z.string({required_error: $t('user.validator.emailRequired')})
-              .email({message: $t('user.validator.emailInvalid')})
-        })
-
-    const {handleSubmit} = useForm({
-      validationSchema: toTypedSchema(validator)
+const $t: any = inject('$t')
+let loading = ref(false)
+const formState = ref<User>({email: undefined})
+const validator = z
+    .object({
+      email: z.string({required_error: $t('user.validator.emailRequired')})
+          .email({message: $t('user.validator.emailInvalid')})
     })
 
-    const onSubmit = handleSubmit(() => {
-      loading.value = true
-      setTimeout(() => {
-        loading.value = false
-        router.push('/auth/signin')
-      }, 3000)
-    })
+const {handleSubmit} = useForm({
+  validationSchema: toTypedSchema(validator)
+})
 
-    return {
-      loading,
-      formState,
-      onSubmit
-    }
-  }
+const onSubmit = handleSubmit(() => {
+  loading.value = true
+  setTimeout(() => {
+    loading.value = false
+    router.push('/auth/signin')
+  }, 3000)
 })
 </script>
