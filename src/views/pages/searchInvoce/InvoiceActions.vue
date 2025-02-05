@@ -13,7 +13,7 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from "@/components/ui/toast/use-toast";
 import type { Invoice } from '@/types/invoice';
 
-const props = defineProps<{
+defineProps<{
   invoice: Invoice;
 }>();
 

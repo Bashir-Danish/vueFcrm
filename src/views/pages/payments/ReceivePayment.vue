@@ -488,16 +488,6 @@ interface DepositAccount {
     accountType: string;
 }
 
-interface PaymentData {
-    invoiceId: string;
-    amount: number;
-    customerId: string;
-    lineItemId: string;
-    depositToAccountId: string;
-    referenceNo?: string;
-    memo?: string;
-}
-
 const route = useRoute()
 const mainStore = useMainStore()
 const { toast } = useToast()
@@ -625,59 +615,6 @@ const handleSubmit = async () => {
         });
     } finally {
         isSubmitting.value = false;  // Stop loading
-    }
-};
-
-const handleFullPayment = async (invoice: Invoice) => {
-    try {
-        if (!form.value.depositTo) {
-            toast({
-                title: 'Error',
-                description: t('payments.receive.selectDepositAccount'),
-                variant: 'destructive'
-            });
-            return;
-        }
-
-        if (!customerData.value?.quickbooksCustomerId || !customerData.value?._id) {
-            toast({
-                title: 'Error',
-                description: t('payments.receive.customerNotFound'),
-                variant: 'destructive'
-            });
-            return;
-        }
-
-        const response = await mainStore.makeFullPayment(
-            invoice.id,
-            customerData.value.quickbooksCustomerId,
-            form.value.depositTo
-        );
-
-        if (response.success) {
-            // Refresh customer data and invoices using MongoDB ID
-            const result = await mainStore.fetchCustomerWithInvoices(customerData.value._id);
-
-            // Update local data
-            customerData.value = result.customer as Customer;
-            invoices.value = result.invoices;
-            transactions.value = transformInvoicesToTransactions(result.invoices);
-
-            toast({
-                title: 'Success',
-                description: t('payments.receive.fullPaymentSuccess'),
-            });
-
-            // Clear form
-            handleClear();
-        }
-    } catch (error) {
-        console.error('Full payment failed:', error);
-        toast({
-            title: 'Error',
-            description: error instanceof Error ? error.message : 'Full payment failed',
-            variant: 'destructive'
-        });
     }
 };
 
@@ -838,11 +775,6 @@ const getInvoicePayments = (transactionType: string) => {
     const invoiceNumber = transactionType.split('#')[1];
     const invoice = invoices.value.find(inv => inv.docNumber === invoiceNumber);
     return invoice?.payments || [];
-};
-
-const getInvoiceTotalPaid = (transactionType: string) => {
-    const payments = getInvoicePayments(transactionType);
-    return payments.reduce((sum, payment) => sum + payment.amount, 0);
 };
 
 // Add a watch to validate amount input

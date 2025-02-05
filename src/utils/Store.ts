@@ -1,4 +1,3 @@
-const LANGUAGE = 'language'
 
 export const StoreUtils = {
     getLanguage(): string | null {

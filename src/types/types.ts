@@ -211,7 +211,7 @@ export interface FormData {
   };
 }
 
-interface FetchChecklistParams {
+export interface FetchChecklistParams {
   page: number;
   limit: number;
   status: string;

@@ -86,6 +86,7 @@ interface InvoicesData {
     paidInvoices: number;
     unpaidInvoices: number;
   };
+  totalCount: number;
 }
 
 interface DepositAccount {
@@ -215,7 +216,8 @@ export const useMainStore = defineStore('main', () => {
       totalInvoices: 0,
       paidInvoices: 0,
       unpaidInvoices: 0
-    }
+    },
+    totalCount: 0
   });
 
   const paymentsData = ref<PaymentsData>({
@@ -948,7 +950,11 @@ export const useMainStore = defineStore('main', () => {
     try {
       const response = await axiosInstance.get(`/api/invoices/customer-invoices/${customerId}`);
       const { customer, invoices, summary } = response.data;
-      invoicesData.value = { invoices, summary };
+      invoicesData.value = { 
+        invoices, 
+        summary,
+        totalCount: invoices.length
+      };
       return { customer, invoices, summary };
     } catch (error) {
       console.error('Error fetching customer with invoices:', error);

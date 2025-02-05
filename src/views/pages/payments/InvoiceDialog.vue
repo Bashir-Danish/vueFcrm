@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatCurrency } from '@/utils/formatters';
 
-const props = defineProps<{
+defineProps<{
   invoice: any | null;
   open: boolean;
 }>();

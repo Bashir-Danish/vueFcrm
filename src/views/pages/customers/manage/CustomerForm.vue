@@ -47,8 +47,8 @@ const localTerminationReasons = ref({
   speed: props.customerData?.terminationReason?.includes('speed') || false,
 })
 
-const assistantNameLabel = computed(() => customerType.value === 'business' ? 'Assistant Name' : 'Name')
-const assistantLastNameLabel = computed(() => customerType.value === 'business' ? 'Assistant Last Name' : 'Last Name')
+// const assistantNameLabel = computed(() => customerType.value === 'business' ? 'Assistant Name' : 'Name')
+// const assistantLastNameLabel = computed(() => customerType.value === 'business' ? 'Assistant Last Name' : 'Last Name')
 
 const handleAddPhone = (phone: string) => {
   if (phone && !phoneNumbers.value.includes(phone)) {

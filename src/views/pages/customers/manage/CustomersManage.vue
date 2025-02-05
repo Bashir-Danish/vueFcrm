@@ -360,7 +360,7 @@ const handleDevicesSubmit = async (devicesData: any) => {
   }
 };
 
-const handleInstallationSubmit = async (installationData: any) => {
+const handleInstallationSubmit = async () => {
   try {
     // await mainStore.submitInstallation(installationData);
     const customerName = currentCustomerData.value?.name || 'Customer';
@@ -549,7 +549,7 @@ onErrorCaptured((err, instance, info) => {
           @submit="(data: any) => {
             if (currentStep === 0) handleCustomerSubmit(data);
             else if (currentStep === 1) handleDevicesSubmit(data);
-            else if (currentStep === 3) handleInstallationSubmit(data);
+            else if (currentStep === 3) handleInstallationSubmit();
           }"
         />
         <div

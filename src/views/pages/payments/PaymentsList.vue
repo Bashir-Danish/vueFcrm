@@ -19,11 +19,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useMainStore } from '@/stores/main'
 import PaymentsTable from './PaymentsTable.vue'
 
-const router = useRouter()
 const store = useMainStore()
 const loading = ref(true)
 

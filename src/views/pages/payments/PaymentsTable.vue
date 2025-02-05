@@ -47,7 +47,7 @@ const hasMore = ref(true);
 const page = ref(1);
 
 // Add loading state for initial customer load
-const loading = ref(false);
+// const loading = ref(false);
 
 // Add loading state for view button
 const loadingInvoiceId = ref<string | null>(null);
@@ -208,6 +208,7 @@ const emit = defineEmits(['customer-change']);
       :data="data.payments || []"
       :filter-options="['customer', 'referenceNo', 'status']"
       :filter-configs="filterConfigs"
+      :filter-counts="{}"
       :page="data.page"
       :limit="data.limit"
       :total-count="data.totalCount"

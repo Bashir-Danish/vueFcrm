@@ -15,21 +15,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checklist, Equipment } from "@/types/types";
+import { Checklist } from "@/types/types";
 import { useI18n } from 'vue-i18n';
 import { RefreshCw } from 'lucide-vue-next';
 
 import DatePicker from "@/components/DatePicker.vue";
-import IndeterminateCheckbox from "@/components/ui/indeterminate-checkbox/IndeterminateCheckbox.vue";
 import {
   useVueTable,
   getCoreRowModel,
-  type Row,
   type RowSelectionState,
-  type TableOptions,
   type Updater,
 } from '@tanstack/vue-table'
-import { Checkbox } from "@/components/ui/checkbox";
 
 const selectedDate = ref<Date>(new Date());
 let dateFilterActive = ref(false);
@@ -46,8 +42,6 @@ const loading = ref(true);
 const type = ref('all');
 const selectedStatus = ref<string[]>([]);
 const selectedLocation = ref<string[]>([]);
-
-const initialLoading = ref(true);
 
 const showDetailsDialog = ref(false);
 const showConfirmDialog = ref(false);
@@ -164,12 +158,6 @@ const handlePageChange = (newPage: number) => {
 
 const handleLimitChange = (newLimit: number) => {
   limit.value = newLimit;
-  page.value = 1;
-  updateRouteAndFetch();
-};
-
-const handleStatusChange = (newStatus: string) => {
-  selectedStatus.value = newStatus.split(',');
   page.value = 1;
   updateRouteAndFetch();
 };
@@ -432,22 +420,6 @@ const handleRowSelectionChange: EventListener = (event) => {
   console.log('Updated selections:', Array.from(selectedRows.value));
 };
 
-// Update table configuration with proper type casting
-const table = useVueTable({
-  data: preparedData.value,
-  columns,
-  state: {
-    rowSelection: {} as RowSelectionState
-  },
-  enableRowSelection: true,
-  enableMultiRowSelection: true,
-  getCoreRowModel: getCoreRowModel(),
-  onRowSelectionChange: (updater: Updater<RowSelectionState>) => {
-    const newSelection = typeof updater === 'function' ? updater({}) : updater;
-    selectedRows.value = new Set(Object.keys(newSelection).filter(key => newSelection[key]));
-  }
-});
-
 // Add event listeners with cleanup
 onMounted(() => {
   window.addEventListener('row-selection-change', handleRowSelectionChange as EventListener);
@@ -510,19 +482,16 @@ watch(selectedRows, (newSelection) => {
 
 const dataTableRef = ref();
 
-const handleSelectAll = () => {
-  if (dataTableRef.value) {
-    const table = dataTableRef.value.getTable();
-    const allSelected = table.getIsAllRowsSelected();
-    table.toggleAllRowsSelected(!allSelected);
-  }
-};
-
-const data = computed(() => preparedData.value)
+// const handleSelectAll = () => {
+//   if (dataTableRef.value) {
+//     const table = dataTableRef.value.getTable();
+//     const allSelected = table.getIsAllRowsSelected();
+//     table.toggleAllRowsSelected(!allSelected);
+//   }
+// };
 
 // Add these new refs near the top of the script
 const syncLoading = ref(false);
-const selectedItems = ref<string[]>([]);
 
 // Update event listener types
 const handleResendChecklist: EventListener = async (event) => {
@@ -640,6 +609,22 @@ onUnmounted(() => {
   window.removeEventListener('hide-checklist', handleHideChecklist as EventListener);
 });
 
+// Add this before the template
+const table = useVueTable({
+  data: preparedData.value,
+  columns,
+  state: {
+    rowSelection: {} as RowSelectionState
+  },
+  enableRowSelection: true,
+  enableMultiRowSelection: true,
+  getCoreRowModel: getCoreRowModel(),
+  onRowSelectionChange: (updater: Updater<RowSelectionState>) => {
+    const newSelection = typeof updater === 'function' ? updater({}) : updater;
+    selectedRows.value = new Set(Object.keys(newSelection).filter(key => newSelection[key]));
+  }
+});
+
 </script>
 
 <template>
@@ -665,6 +650,7 @@ onUnmounted(() => {
       <!-- DataTable with Status Filter -->
       <DataTable
         ref="dataTableRef"
+        :table="table"
         v-bind="tableProps"
         :columns="columns"
         :data="preparedData"

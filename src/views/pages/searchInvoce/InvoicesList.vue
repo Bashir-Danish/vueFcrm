@@ -18,11 +18,10 @@ import {
 } from "@/components/ui/table";
 import InvoiceActions from "./InvoiceActions.vue";
 import ScrollArea from "@/components/ui/scroll-area/ScrollArea.vue";
-import axiosInstance from "@/utils/axios";
-import { MapPin, Search, SearchIcon } from "lucide-vue-next";
+import { Search, SearchIcon } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import { Trash2Icon } from "lucide-vue-next";
-import { Invoice, LineItem, Payment, InvoicePaymentParams } from "@/types/invoice";
+import type { Invoice} from "@/types/invoice";
 import {
   Select,
   SelectContent,
@@ -271,19 +270,6 @@ const getLineItemPaymentAmount = (invoiceId: string, lineItemId: string): number
   return paymentAmounts.value[invoiceId]?.[lineItemId] || 0;
 };
 
-const validatePaymentAmount = (invoiceId: string, lineItemId: string, amount: number) => {
-  const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
-  const lineItem = invoice?.lineItems.find(item => item.id === lineItemId);
-  
-  if (!lineItem) return false;
-  
-  // Get remaining balance for this line item
-  const remaining = lineItem.remainingBalance;
-  
-  // Validate amount is within valid range
-  return amount > 0 && amount <= remaining;
-};
-
 const setLineItemPaymentAmount = (invoiceId: string, lineItemId: string, amount: number) => {
   if (!paymentAmounts.value[invoiceId]) {
     paymentAmounts.value[invoiceId] = {};
@@ -308,69 +294,6 @@ const setLineItemPaymentAmount = (invoiceId: string, lineItemId: string, amount:
 
   // Update the amount
   paymentAmounts.value[invoiceId][lineItemId] = validAmount;
-};
-
-const handlePayment = async (invoiceId: string) => {
-  try {
-    const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) {
-      throw new Error('Invoice not found');
-    }
-
-    // Generate the next payment sequence number
-    const nextPaymentNumber = (invoice.payments?.length || 0) + 1;
-    const referenceNo = `${invoice.docNumber}-${nextPaymentNumber}`;
-
-    // Create payment data
-    const paymentData: InvoicePaymentParams = {
-      invoiceId: invoice.id,
-      amount: invoice.balance,
-      customerId: invoice.customerRef.value,
-      lineItemId: invoice.id,
-      depositToAccountId: selectedDepositAccounts.value[invoiceId],
-      referenceNo: referenceNo,
-      memo: `Payment ${nextPaymentNumber} for invoice #${invoice.docNumber}`
-    };
-
-    console.log('Processing payment with data:', paymentData);
-    
-    const response = await mainStore.makeInvoicePayment(paymentData);
-    
-    if (response.success) {
-      toast({
-        title: t('invoices.payment.success'),
-        description: t('invoices.payment.successMessage', { reference: referenceNo }),
-      });
-
-      // Refresh the invoice data
-      const customer = searchResults.value.find(c => 
-        invoice.customerRef.value === c.id
-      );
-      if (customer) {
-        await mainStore.fetchCustomerInvoices(customer.id);
-      }
-    }
-  } catch (error) {
-    console.error('Payment failed:', error);
-    toast({
-      title: t('invoices.payment.error'),
-      description: error instanceof Error ? error.message : 'Payment failed',
-      variant: 'destructive'
-    });
-  }
-};
-
-const fetchDepositAccounts = async () => {
-  try {
-    depositAccounts.value = await mainStore.fetchDepositAccounts();
-  } catch (error) {
-    console.error('Error fetching deposit accounts:', error);
-    toast({
-      title: t('invoices.payment.error'),
-      description: error instanceof Error ? error.message : 'Failed to fetch deposit accounts',
-      variant: 'destructive'
-    });
-  }
 };
 
 const handleLineItemPayment = async (invoiceId: string, lineItemId: string) => {
@@ -559,6 +482,19 @@ const showTooltip = (event: MouseEvent, item: any) => {
     transform: 'translate(10px, 10px)',
     transition: 'none'
   };
+};
+
+const fetchDepositAccounts = async () => {
+  try {
+    depositAccounts.value = await mainStore.fetchDepositAccounts();
+  } catch (error) {
+    console.error('Error fetching deposit accounts:', error);
+    toast({
+      title: t('invoices.payment.error'),
+      description: error instanceof Error ? error.message : 'Failed to fetch deposit accounts',
+      variant: 'destructive'
+    });
+  }
 };
 </script>
 <template>

@@ -181,7 +181,6 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@/components/ui/button/index";
 import ScrollArea from "@/components/ui/scroll-area/ScrollArea.vue";
 import {
-  ChevronRight,
   Settings,
   MoreVertical,
   ChevronLeft,

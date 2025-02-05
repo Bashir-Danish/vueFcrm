@@ -29,7 +29,6 @@ import NavigationService from '@/services/Navigation.ts'
 import CustomSpinner from '@/components/CustomSpinner.vue'
 import { useMainStore } from '@/stores/main'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from "@/components/ui/toast/use-toast"
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 const router = useRouter()
@@ -38,7 +37,6 @@ const navigators = ref<NavigationModel[]>([])
 const isLoading = ref(true)
 const mainStore = useMainStore()
 const authStore = useAuthStore()
-const { toast } = useToast()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
