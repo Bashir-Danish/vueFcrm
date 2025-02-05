@@ -68,7 +68,9 @@ export default {
     exceedsBalance: 'Amount exceeds remaining balance',
     alreadyPaid: 'This item is already fully paid',
     history: 'Payment History',
-    hoverToSeeDetails: 'Hover to see payment history'
+    hoverToSeeDetails: 'Hover to see payment history',
+    selectDepositAccount: 'Select deposit account',
+    itemPaymentSuccess: 'Payment of {amount} for {item} was successful'
   },
   confirmDelete: 'Are you sure you want to delete this invoice?',
   delete: {

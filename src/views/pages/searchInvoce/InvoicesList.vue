@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useMainStore } from "@/stores/main";
 import { useI18n } from "vue-i18n";
@@ -44,6 +44,14 @@ interface DepositAccount {
   accountType: string;
 }
 
+// Add this interface near the top with other interfaces
+interface TooltipStyle {
+  top: string;
+  left: string;
+  transform?: string;
+  transition?: string;
+}
+
 const route = useRoute();
 const router = useRouter();
 const mainStore = useMainStore();
@@ -61,6 +69,29 @@ const expandedRows = ref<string>('');
 const paymentAmounts = ref<PaymentAmounts>({});
 const depositAccounts = ref<DepositAccount[]>([]);
 const selectedDepositAccounts = ref<{ [key: string]: string }>({});
+const loadingPayments = ref<{ [key: string]: boolean }>({});
+const activeTooltip = ref<string | null>(null);
+const tooltipStyle = ref<TooltipStyle>({
+  top: '0px',
+  left: '0px'
+});
+
+// Add these refs
+const tooltipPosition = ref({ x: 0, y: 0 });
+const tooltipTarget = ref({ x: 0, y: 0 });
+const animationFrame = ref<number>();
+
+// Add this computed property to track remaining balances
+const remainingBalances = computed(() => {
+  const balances: { [key: string]: { [key: string]: number } } = {};
+  mainStore.invoicesData.invoices.forEach(invoice => {
+    balances[invoice.id] = {};
+    invoice.lineItems.forEach(item => {
+      balances[invoice.id][item.id] = item.remainingBalance;
+    });
+  });
+  return balances;
+});
 
 const toggleRow = (invoiceId: string) => {
   if (expandedRows.value === invoiceId) {
@@ -116,7 +147,7 @@ const selectCustomer = async (customer: any) => {
   showResults.value = false; 
 
   try {
-    await mainStore.fetchCustomerInvoices(customer.id);
+    await mainStore.fetchCustomerInvoices(customer.quickbooksCustomerId || customer._id);
     showResults.value = true;
     
     // Update URL with customer name
@@ -211,25 +242,72 @@ onMounted(async () => {
   }
   document.addEventListener("click", handleClickOutside);
   await fetchDepositAccounts();
+
+  // Hide tooltip when mouse leaves
+  document.addEventListener('mouseleave', () => {
+    activeTooltip.value = null;
+  });
+
+  // Update tooltip position on mouse move
+  document.addEventListener('mousemove', (e) => {
+    if (activeTooltip.value) {
+      tooltipTarget.value = { x: e.clientX, y: e.clientY };
+      if (!animationFrame.value) {
+        animationFrame.value = requestAnimationFrame(updateTooltipPosition);
+      }
+    }
+  });
+});
+
+// Clean up animation frame on tooltip hide
+watch(activeTooltip, (newValue) => {
+  if (!newValue && animationFrame.value) {
+    cancelAnimationFrame(animationFrame.value);
+    animationFrame.value = undefined;
+  }
 });
 
 const getLineItemPaymentAmount = (invoiceId: string, lineItemId: string): number => {
   return paymentAmounts.value[invoiceId]?.[lineItemId] || 0;
 };
 
-const setLineItemPaymentAmount = (invoiceId: string, lineItemId: string, value: number) => {
-  if (!paymentAmounts.value[invoiceId]) {
-    paymentAmounts.value[invoiceId] = {};
-  }
-  
+const validatePaymentAmount = (invoiceId: string, lineItemId: string, amount: number) => {
   const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
   const lineItem = invoice?.lineItems.find(item => item.id === lineItemId);
   
-  if (lineItem && value > lineItem.remainingBalance) {
-    value = lineItem.remainingBalance;
-  }
+  if (!lineItem) return false;
   
-  paymentAmounts.value[invoiceId][lineItemId] = value;
+  // Get remaining balance for this line item
+  const remaining = lineItem.remainingBalance;
+  
+  // Validate amount is within valid range
+  return amount > 0 && amount <= remaining;
+};
+
+const setLineItemPaymentAmount = (invoiceId: string, lineItemId: string, amount: number) => {
+  if (!paymentAmounts.value[invoiceId]) {
+    paymentAmounts.value[invoiceId] = {};
+  }
+
+  const maxAmount = remainingBalances.value[invoiceId]?.[lineItemId] ?? 0;
+  
+  // Ensure amount is not negative and doesn't exceed remaining balance
+  let validAmount = Math.max(0, Math.min(amount, maxAmount));
+
+  // If amount exceeds maximum, show warning and adjust
+  if (amount > maxAmount) {
+    validAmount = maxAmount;
+    toast({
+      title: t('invoices.payment.warning'),
+      description: t('invoices.payment.amountExceedsBalance', { 
+        max: formatCurrency(maxAmount) 
+      }),
+      variant: 'default'
+    });
+  }
+
+  // Update the amount
+  paymentAmounts.value[invoiceId][lineItemId] = validAmount;
 };
 
 const handlePayment = async (invoiceId: string) => {
@@ -296,65 +374,57 @@ const fetchDepositAccounts = async () => {
 };
 
 const handleLineItemPayment = async (invoiceId: string, lineItemId: string) => {
+  const paymentKey = `${invoiceId}-${lineItemId}`;
+  loadingPayments.value[paymentKey] = true;
+
   try {
-    const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
-    if (!invoice) {
-      throw new Error('Invoice not found');
+    // Check if deposit account is selected
+    if (!selectedDepositAccounts.value[invoiceId]) {
+      toast({
+        title: t('invoices.payment.error'),
+        description: t('invoices.payment.selectDepositAccount'),
+        variant: 'destructive'
+      });
+      return;
     }
-
-    const lineItem = invoice.lineItems.find(item => item.id === lineItemId);
-    if (!lineItem) {
-      throw new Error('Line item not found');
-    }
-
-    // Generate the next payment sequence number
-    const nextPaymentNumber = (invoice.payments?.length || 0) + 1;
-    const referenceNo = `${invoice.docNumber}-${nextPaymentNumber}`;
 
     const amount = getLineItemPaymentAmount(invoiceId, lineItemId);
-    if (!amount) {
-      throw new Error('Payment amount is required');
+    const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
+
+    await mainStore.makeInvoicePayment({
+      invoiceId,
+      amount,
+      customerId: invoice?.customerRef.value || '',
+      lineItemId,
+      depositToAccountId: selectedDepositAccounts.value[invoiceId]
+    });
+
+    // After successful payment
+    toast({
+      title: t('invoices.payment.success'),
+      description: t('invoices.payment.itemPaymentSuccess', { 
+        amount: formatCurrency(amount) 
+      }),
+      variant: 'default'
+    });
+
+    // Clear the payment amount
+    setLineItemPaymentAmount(invoiceId, lineItemId, 0);
+
+    // Refresh the invoices data
+    if (invoice?.customerRef?.value) {
+      await mainStore.fetchCustomerInvoices(invoice.customerRef.value);
     }
 
-    // Create payment data
-    const paymentData: InvoicePaymentParams = {
-      invoiceId: invoice.id,
-      amount: amount,
-      customerId: invoice.customerRef.value,
-      lineItemId: lineItemId,
-      depositToAccountId: selectedDepositAccounts.value[invoiceId],
-      referenceNo: referenceNo,
-      memo: `Payment ${nextPaymentNumber} for line item in invoice #${invoice.docNumber}`
-    };
-
-    console.log('Processing line item payment with data:', paymentData);
-    
-    const response = await mainStore.makeInvoicePayment(paymentData);
-    
-    if (response.success) {
-      toast({
-        title: t('invoices.payment.success'),
-        description: t('invoices.payment.successMessage', { reference: referenceNo }),
-      });
-
-      // Reset the payment amount
-      setLineItemPaymentAmount(invoiceId, lineItemId, 0);
-
-      // Refresh the invoice data
-      const customer = searchResults.value.find(c => 
-        invoice.customerRef.value === c.id
-      );
-      if (customer) {
-        await mainStore.fetchCustomerInvoices(customer.id);
-      }
-    }
   } catch (error) {
-    console.error('Line item payment failed:', error);
+    console.error('Payment failed:', error);
     toast({
       title: t('invoices.payment.error'),
       description: error instanceof Error ? error.message : 'Payment failed',
       variant: 'destructive'
     });
+  } finally {
+    loadingPayments.value[paymentKey] = false;
   }
 };
 
@@ -457,6 +527,39 @@ const getPaymentStatusText = (invoice: Invoice) => {
       return formatCurrency(invoice.balance)
   }
 };
+
+// Update the mousemove handler to use smooth animation
+const updateTooltipPosition = () => {
+  if (!activeTooltip.value) return;
+
+  const dx = tooltipTarget.value.x - tooltipPosition.value.x;
+  const dy = tooltipTarget.value.y - tooltipPosition.value.y;
+
+  tooltipPosition.value.x += dx * 0.2; // Adjust this value to control smoothness
+  tooltipPosition.value.y += dy * 0.2;
+
+  tooltipStyle.value = {
+    top: `${tooltipPosition.value.y}px`,
+    left: `${tooltipPosition.value.x}px`,
+    transform: 'translate(10px, 10px)',
+    transition: 'none' // Remove default transitions for smoother animation
+  };
+
+  animationFrame.value = requestAnimationFrame(updateTooltipPosition);
+};
+
+// Update showTooltip function
+const showTooltip = (event: MouseEvent, item: any) => {
+  activeTooltip.value = item.id;
+  tooltipPosition.value = { x: event.clientX, y: event.clientY };
+  tooltipTarget.value = { x: event.clientX, y: event.clientY };
+  tooltipStyle.value = {
+    top: `${event.clientY}px`,
+    left: `${event.clientX}px`,
+    transform: 'translate(10px, 10px)',
+    transition: 'none'
+  };
+};
 </script>
 <template>
   <div class="container relative mx-auto px-4 sm:px-6 lg:px-8">
@@ -466,7 +569,7 @@ const getPaymentStatusText = (invoice: Invoice) => {
 
     <!-- Search Input with Dropdown -->
     <div class="w-full search-container bg-background" style="position: sticky; top: 0; z-index: 100; padding-top: 3rem; padding-bottom: 1rem;">
-      <div class="relative max-w-lg mx-auto">
+      <div class="relative max-w-2xl mx-auto">
         <div
           class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
         >
@@ -488,50 +591,48 @@ const getPaymentStatusText = (invoice: Invoice) => {
         </div>
 
         <!-- Customer Search Results Dropdown -->
-          <div
-            v-if="showDropdown && searchResults.length > 0"
-            class="absolute max-w-lg w-full mt-1 rounded-md bg-popover text-popover-foreground shadow-md border"
-          >
+        <div v-if="showDropdown && searchResults.length > 0"
+            class="absolute max-w-2xl w-full mt-1 rounded-md bg-popover text-popover-foreground shadow-md border">
             <ScrollArea :class="[
-              'w-full rounded-md',
-              searchResults.length > 4 ? 'h-[250px]' : 'max-h-[250px]'
+                'w-full rounded-md',
+                searchResults.length > 4 ? 'h-[250px]' : 'max-h-[250px]'
             ]">
-              <ul class="p-1">
-                <li
-                  v-for="customer in searchResults"
-                  :key="customer.id"
-                  @click="selectCustomer(customer)"
-                  class="relative flex cursor-pointer select-none rounded-lg px-4 py-3 outline-none hover:bg-card hover:text-muted-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-all duration-200 group border border-transparent hover:border-primary/20"
-                >
-                  <div class="flex flex-row items-center w-full gap-4">
-                    <div class="flex-1 flex justify-between">
-                      <div class="flex flex-col w-1/2">
-                        <span class="font-medium text-base transition-colors truncate">
-                          {{ customer.name }}
-                        </span>
-                        <span
-                          v-if="customer.username"
-                          class="text-sm text-muted-foreground"
-                        >
-                          @{{ customer.username }}
-                        </span>
-                      </div>
-                      <div class="flex flex-col justify-start gap-2 w-1/2">
-                        <div
-                          v-if="customer.address"
-                          class="hidden md:flex items-center gap-2 px-3 flex-wrap"
-                          :title="customer.address"
-                        >
-                          <MapPin class="h-4 w-4 text-muted-foreground" />
-                          <span class="text-sm truncate">{{ customer.address }}</span>
+                <ul class="p-1">
+                    <li v-for="customer in searchResults"
+                        :key="customer._id"
+                        @click="selectCustomer(customer)"
+                        class="w-full relative flex cursor-pointer select-none rounded-lg px-4 py-3 hover:bg-card hover:text-muted-foreground transition-all duration-200 group border border-transparent hover:border-primary/20">
+                        <div class="flex flex-row items-center w-full gap-4">
+                            <div class="flex-1 flex justify-between">
+                                <!-- Left side: Name and username -->
+                                <div class="flex flex-col w-3/3">
+                                    <!-- First row: Name and Company -->
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-base">
+                                            {{ customer.custType === 'business' ? customer.companyName : customer.name }}
+                                        </span>
+                                        <span v-if="customer.custType === 'business'" class="text-sm text-muted-foreground">
+                                            ({{ customer.fullName }})
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Second row: Username -->
+                                    <div class="text-sm text-muted-foreground">
+                                        <span v-if="customer.username">@{{ customer.username }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Middle: Contact info -->
+                                <div class="flex flex-col w-1/3 text-sm text-muted-foreground">
+                                    <span v-if="customer.phones">📱 {{ customer.phones }}</span>
+                                    <span v-if="customer.address">📍 {{ customer.address }}</span>
+                                </div>
+                            </div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              </ul>
+                    </li>
+                </ul>
             </ScrollArea>
-          </div>
+        </div>
 
         <!-- Empty State -->
         <div
@@ -664,7 +765,7 @@ const getPaymentStatusText = (invoice: Invoice) => {
                   <TableCell>{{ formatCurrency(invoice.totalAmount) }}</TableCell>
                   <TableCell>
                     <Badge
-                      :variant="getPaymentStatusVariant(invoice)"invoices.payment.paid
+                      :variant="getPaymentStatusVariant(invoice)"
                       :class="{
                         'bg-green-500 hover:bg-green-600 text-black': invoice.status === 'paid',
                         'bg-yellow-500 hover:bg-yellow-600 text-black': invoice.status === 'partially_paid',
@@ -714,17 +815,23 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                     <td class="text-right py-2 px-4">{{ formatCurrency(item.unitPrice) }}</td>
                                     <td class="py-2 px-4">
                                       <div class="flex flex-col items-end relative group">
-                                        <!-- Always show total amount with hover card -->
-                                        <span class="cursor-help font-medium">
+                                        <!-- Amount display -->
+                                        <span 
+                                          class="cursor-help font-medium" 
+                                          @mouseover="item.payments?.length ? showTooltip($event, item) : null"
+                                          @mouseleave="activeTooltip = null"
+                                        >
                                           {{ formatCurrency(item.amount) }}
                                         </span>
 
-                                        <!-- Hover card with payment history -->
-                                        <div class="absolute bottom-full mb-2 right-0 w-64 p-3 bg-card rounded-lg shadow-lg 
-                                                    opacity-0 invisible group-hover:opacity-100 group-hover:visible 
-                                                    transition-all duration-200 z-50 border border-border/50">
+                                        <!-- Hover card with payment history - positioned relative to cursor -->
+                                        <div v-if="activeTooltip === item.id && item.payments?.length" 
+                                             :style="tooltipStyle"
+                                             class="fixed w-64 p-3 bg-card rounded-lg shadow-lg border border-border/50 z-[100] pointer-events-none">
                                           <div class="text-xs space-y-2">
-                                            <div class="font-semibold text-sm mb-2 text-foreground/90 border-b pb-2">{{ t('invoices.payment.history') }}</div>
+                                            <div class="font-semibold text-sm mb-2 text-foreground/90 border-b pb-2">
+                                              {{ t('invoices.payment.history') }}
+                                            </div>
                                             <div v-for="(payment, pIndex) in item.payments" 
                                                  :key="pIndex" 
                                                  class="flex justify-between py-1 hover:bg-muted/50 rounded px-1">
@@ -753,7 +860,7 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                         <template v-if="item.remainingBalance > 0">
                                           <Select
                                             v-model="selectedDepositAccounts[invoice.id]"
-                                            :disabled="selectedDepositAccounts[invoice.id]"
+                                            :disabled="!!selectedDepositAccounts[invoice.id]"
                                           >
                                             <SelectTrigger class="w-[200px]">
                                               <SelectValue :placeholder="t('payments.receive.selectDepositAccount')" />
@@ -771,15 +878,17 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                           <Input
                                             type="number"
                                             :placeholder="t('invoices.payment.amount')"
-                                            :value="getLineItemPaymentAmount(invoice.id, item.id) || ''"
-                                            @input="(e: Event) => setLineItemPaymentAmount(
-                                              invoice.id, 
-                                              item.id, 
-                                              Number((e.target as HTMLInputElement).value)
-                                            )"
+                                            :value="getLineItemPaymentAmount(invoice.id, item.id)"
+                                            @input="(e: Event) => {
+                                              const input = e.target as HTMLInputElement;
+                                              const newValue = Number(input.value);
+                                              setLineItemPaymentAmount(invoice.id, item.id, newValue);
+                                              // Force update input value to show validated amount
+                                              input.value = getLineItemPaymentAmount(invoice.id, item.id).toString();
+                                            }"
                                             class="w-24 text-right focus:ring focus:ring-opacity-50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             :min="0"
-                                            :max="item.remainingBalance"
+                                            :max="remainingBalances[invoice.id]?.[item.id] ?? 0"
                                             step="0.01"
                                           />
                                           <Button 
@@ -787,10 +896,21 @@ const getPaymentStatusText = (invoice: Invoice) => {
                                             size="sm"
                                             @click.stop="handleLineItemPayment(invoice.id, item.id)"
                                             :disabled="!getLineItemPaymentAmount(invoice.id, item.id) || 
-                                                       getLineItemPaymentAmount(invoice.id, item.id) <= 0"
+                                                       getLineItemPaymentAmount(invoice.id, item.id) <= 0 ||
+                                                       loadingPayments[`${invoice.id}-${item.id}`]"
                                             class="whitespace-nowrap"
                                           >
-                                            {{ t("invoices.payment.payItem") }}
+                                            <template v-if="loadingPayments[`${invoice.id}-${item.id}`]">
+                                              <span class="inline-block animate-spin mr-2">
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24">
+                                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                                                </svg>
+                                              </span>
+                                              <!-- {{ t('invoices.common.processing') }} -->
+                                            </template>
+                                            <template v-else>
+                                              {{ t("invoices.payment.payItem") }}
+                                            </template>
                                           </Button>
                                         </template>
                                         

@@ -68,6 +68,8 @@ export default {
     exceedsBalance: 'مبلغ از مانده بیشتر است',
     alreadyPaid: 'این آیتم قبلا پرداخت شده است',
     history: 'تاریخچه پرداخت',
-    hoverToSeeDetails: 'برای مشاهده تاریخچه پرداخت نشانگر را نگه دارید'
+    hoverToSeeDetails: 'برای مشاهده تاریخچه پرداخت نشانگر را نگه دارید',
+    selectDepositAccount: 'انتخاب حساب تسهیلات',
+    itemPaymentSuccess: 'پرداخت {amount} برای {item} با موفقیت انجام شد'
   }
 } 
