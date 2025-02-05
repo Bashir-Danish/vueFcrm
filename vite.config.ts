@@ -17,10 +17,18 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src')
         }
     },
-    base: '/',
+    base: './',
     build: {
         outDir: 'dist',
         assetsDir: 'assets',
-        sourcemap: true
+        sourcemap: true,
+        rollupOptions: {
+            output: {
+                manualChunks: undefined,
+                assetFileNames: 'assets/[name].[ext]',
+                chunkFileNames: 'assets/[name].[hash].js',
+                entryFileNames: 'assets/[name].[hash].js',
+            }
+        }
     }
 })
