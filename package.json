@@ -4,9 +4,7 @@
   "private": true,
   "version": "2024.0.7",
   "scripts": {
-    "predev": "sh setup.sh",
     "dev": "vite",
-    "prebuild": "sh setup.sh",
     "build": "vue-tsc && vite build && cp CNAME dist/",
     "preview": "vite preview",
     "start": "concurrently \"npm run dev\" \"npm run backend\"",

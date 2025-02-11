@@ -118,11 +118,7 @@ const fetchCustomers = async (searchTerm: string) => {
   loading.value = true;
 
   try {
-    console.log('Fetching customers with search term:', searchTerm);
     const response = await mainStore.searchInvoiceCustomers(searchTerm);
-    console.log('Received search results:', response);
-    
-    // Make sure we're accessing the customers array from the response
     searchResults.value = response?.customers || [];
     showDropdown.value = searchResults.value.length > 0;
   } catch (error) {
@@ -163,32 +159,21 @@ const selectCustomer = async (customer: any) => {
   }
 };
 
-// Debounce function
-const debounce = (fn: Function, delay: number) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return function (...args: any[]) {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn.apply(null, args), delay);
+// Update debounce function with proper types
+const debounce = <T extends (...args: any[]) => any>(fn: T, delay: number) => {
+  let timeoutId: number | undefined;
+  return function (this: any, ...args: Parameters<T>) {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      fn.apply(this, args);
+      timeoutId = undefined;
+    }, delay);
   };
 };
 
 const debouncedFetch = debounce(fetchCustomers, 300);
-
-const handleSearchChange = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  search.value = target.value;
-  
-  if (search.value.length >= 3) {
-    isSearching.value = true;
-    loading.value = true;
-    showResults.value = false;
-    debouncedFetch(search.value);
-  } else {
-    showDropdown.value = false;
-    searchResults.value = [];
-    loading.value = false;
-  }
-};
 
 // Close dropdown when clicking outside
 const handleClickOutside = (event: MouseEvent) => {
@@ -496,6 +481,22 @@ const fetchDepositAccounts = async () => {
     });
   }
 };
+
+const handleSearchInput = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  search.value = target.value;
+  
+  if (search.value.length >= 3) {
+    isSearching.value = true;
+    loading.value = true;
+    showResults.value = false;
+    debouncedFetch(search.value);
+  } else {
+    showDropdown.value = false;
+    searchResults.value = [];
+    loading.value = false;
+  }
+};
 </script>
 <template>
   <div class="container relative mx-auto px-4 sm:px-6 lg:px-8">
@@ -512,11 +513,15 @@ const fetchDepositAccounts = async () => {
           <Search class="h-5 w-5 text-gray-400" />
         </div>
         <Input
-          :placeholder="t('invoices.search.placeholder')"
+          :placeholder="$t('invoices.search.placeholder')"
           :value="search"
-          @input="handleSearchChange"
+          @input="handleSearchInput"
           class="w-full pl-10 rtl:text-right ltr:text-left"
-        />
+        >
+          <template #prefix>
+            <SearchIcon class="mr-2 h-4 w-4" />
+          </template>
+        </Input>
         <div
           v-if="loading"
           class="absolute inset-y-0 right-0 pr-3 flex items-center"

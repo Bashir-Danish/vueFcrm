@@ -124,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing.value = true
     refreshPromise.value = new Promise(async (resolve) => {
       try {
-        const response = await axiosInstance.post('/api/users/refresh-token')
+        const response = await axios.post('/api/users/refresh-token')
         token.value = response.data.accessToken
         if (token.value) {
           localStorage.setItem('token', token.value)

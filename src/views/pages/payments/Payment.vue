@@ -10,7 +10,7 @@
                 <Input 
                     :placeholder="t('payments.search.placeholder')" 
                     :value="search" 
-                    @input="handleSearchChange"
+                    @input="handleInput"
                     class="w-full pl-10 rtl:text-right ltr:text-left" 
                 />
                 <div v-if="loading" class="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -132,60 +132,64 @@ const search = ref('')
 const searchResults = ref<Customer[]>([])
 const isSearching = ref(false)
 
-// Debounce function
-const debounce = (fn: Function, delay: number) => {
-    let timeoutId: ReturnType<typeof setTimeout>
-    return function (...args: any[]) {
-        clearTimeout(timeoutId)
-        timeoutId = setTimeout(() => fn.apply(null, args), delay)
+const handleInput = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    search.value = target.value;
+    
+    if (!target.value.trim()) {
+        searchResults.value = [];
+        loading.value = false;
+        return;
     }
-}
+    
+    if (target.value.length >= 3) {
+        loading.value = true;
+        debouncedFetch(target.value);
+    } else {
+        searchResults.value = [];
+    }
+};
 
 const fetchCustomers = async (searchTerm: string) => {
     if (searchTerm.length < 3) {
-        searchResults.value = []
-        return
+        searchResults.value = [];
+        return;
     }
 
-    loading.value = true
-    isSearching.value = true
+    loading.value = true;
+    isSearching.value = true;
 
     try {
-        const response = await mainStore.searchInvoiceCustomers(searchTerm ,false)
-        searchResults.value = response?.customers || []
+        const response = await mainStore.searchInvoiceCustomers(searchTerm, false);
+        searchResults.value = response?.customers || [];
     } catch (error) {
-        console.error("Error fetching customers:", error)
+        console.error("Error fetching customers:", error);
         toast({
             title: t('payments.search.error'),
             description: error instanceof Error ? error.message : 'Failed to search customers',
             variant: 'destructive'
-        })
-        searchResults.value = []
+        });
+        searchResults.value = [];
     } finally {
-        loading.value = false
-        isSearching.value = false
+        loading.value = false;
+        isSearching.value = false;
     }
-}
+};
 
-const debouncedFetch = debounce(fetchCustomers, 300)
+const debounce = <T extends (...args: any[]) => any>(fn: T, delay: number) => {
+    let timeoutId: number | undefined;
+    return function (this: any, ...args: Parameters<T>) {
+        if (timeoutId) {
+            window.clearTimeout(timeoutId);
+        }
+        timeoutId = window.setTimeout(() => {
+            fn.apply(this, args);
+            timeoutId = undefined;
+        }, delay);
+    };
+};
 
-const handleSearchChange = (event: Event) => {
-    const target = event.target as HTMLInputElement
-    search.value = target.value
-
-    if (!search.value.trim()) {
-        searchResults.value = []
-        loading.value = false
-        return
-    }
-
-    if (search.value.length >= 3) {
-        loading.value = true
-        debouncedFetch(search.value)
-    } else {
-        searchResults.value = []
-    }
-}
+const debouncedFetch = debounce(fetchCustomers, 300);
 
 const navigateToPayment = (customerId: string | undefined) => {
     if (!customerId) return;
