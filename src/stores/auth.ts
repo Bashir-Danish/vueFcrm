@@ -124,26 +124,43 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing.value = true
     refreshPromise.value = new Promise(async (resolve) => {
       try {
-        const response = await axios.post('/api/users/refresh-token')
-        token.value = response.data.accessToken
-        if (token.value) {
-          localStorage.setItem('token', token.value)
-        }
-        if (response.data.user) {
-          user.value = response.data.user
-          saveUserToLocalStorage(user.value)
-        }
-        resolve(token.value)
-      } catch (error) {
-        console.error('Token refresh failed:', error)
-        await logout()
-        resolve(null)
-      } finally {
-        isRefreshing.value = false
-      }
-    })
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/users/refresh-token`,
+          {},
+          {
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
 
-    return refreshPromise.value
+        if (response.data.accessToken) {
+          token.value = response.data.accessToken;
+          localStorage.setItem('token', response.data.accessToken);
+          
+          if (response.data.user) {
+            user.value = response.data.user;
+            saveUserToLocalStorage(user.value);
+          }
+          
+          resolve(response.data.accessToken);
+        } else {
+          console.error('No access token received in refresh response');
+          await logout();
+          resolve(null);
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        await logout();
+        resolve(null);
+      } finally {
+        isRefreshing.value = false;
+        refreshPromise.value = null;
+      }
+    });
+
+    return refreshPromise.value;
   }
 
   const checkAuth = () => {

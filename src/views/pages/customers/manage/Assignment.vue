@@ -241,7 +241,7 @@ const getCustomerName = (customer: any) => {
             <Input
               :placeholder="t('customers.assignment.searchInstallers')"
               v-model="userSearch"
-              class="w-full select-none"
+              class="w-full select-none bg-background p-2 rounded-md"
             />
           </div>
           <ScrollArea class="h-[calc(100vh-19rem)]">
@@ -350,7 +350,7 @@ const getCustomerName = (customer: any) => {
             <Input
               :placeholder="t('customers.assignment.searchInstallations')"
               v-model="installationSearch"
-              class="w-full select-none"
+              class="w-full select-none bg-background p-2 rounded-md"
             />
           </div>
           <div class="h-[calc(100vh-19rem)] overflow-hidden">

@@ -1,9 +1,10 @@
 import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig, isCancel } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import { storeToRefs } from 'pinia';
+import router from '@/router';
 
 const instance = axios.create({
-  baseURL: 'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
   timeout: 10000, 
   headers: {
@@ -32,17 +33,27 @@ instance.interceptors.response.use(
     const authStore = useAuthStore();
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    // Handle token refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
         const newToken = await authStore.refreshToken();
-        if (originalRequest.headers) {
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        if (newToken) {
+          if (originalRequest.headers) {
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          }
+          return instance(originalRequest);
+        } else {
+          // If refresh token failed, logout and redirect to login
+          await authStore.logout();
+          router.push('/auth/signin');
+          return Promise.reject(new Error('Session expired. Please login again.'));
         }
-        return instance(originalRequest);
       } catch (refreshError) {
-        authStore.logout();
+        // If refresh token throws an error, logout and redirect to login
+        await authStore.logout();
+        router.push('/auth/signin');
         return Promise.reject(refreshError);
       }
     }
@@ -59,6 +70,8 @@ instance.interceptors.response.use(
         break;
       case 403:
         console.error('Forbidden:', error.response.data);
+        // Redirect to login if forbidden
+        router.push('/auth/signin');
         break;
       case 404:
         console.error('Not Found:', error.response.data);
@@ -70,7 +83,7 @@ instance.interceptors.response.use(
         console.error(`Unhandled error status: ${error.response.status}`, error.response.data);
     }
 
-    return Promise.reject(error);
+    return Promise.reject(error.response?.data || error);
   }
 );
 
