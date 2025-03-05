@@ -92,6 +92,28 @@ const remainingBalances = computed(() => {
   return balances;
 });
 
+const getLastUsedDepositAccount = (invoice: any) => {
+  // First check the invoice's own payments
+  if (invoice.payments && invoice.payments.length > 0) {
+    const lastPayment = invoice.payments[invoice.payments.length - 1];
+    if (lastPayment.depositToAccountId) {
+      return lastPayment.depositToAccountId;
+    }
+  }
+
+  // Then check individual line item payments
+  for (const item of invoice.lineItems) {
+    if (item.payments && item.payments.length > 0) {
+      const lastPayment = item.payments[item.payments.length - 1];
+      if (lastPayment.depositToAccountId) {
+        return lastPayment.depositToAccountId;
+      }
+    }
+  }
+
+  return null;
+};
+
 const toggleRow = (invoiceId: string) => {
   if (expandedRows.value === invoiceId) {
     // Closing
@@ -99,6 +121,15 @@ const toggleRow = (invoiceId: string) => {
   } else {
     // Opening
     expandedRows.value = invoiceId;
+    // Find the invoice
+    const invoice = mainStore.invoicesData.invoices.find(inv => inv.id === invoiceId);
+    if (invoice && !selectedDepositAccounts.value[invoiceId]) {
+      // Auto-select the deposit account from the last payment
+      const lastUsedAccount = getLastUsedDepositAccount(invoice);
+      if (lastUsedAccount) {
+        selectedDepositAccounts.value[invoiceId] = lastUsedAccount;
+      }
+    }
   }
 };
 

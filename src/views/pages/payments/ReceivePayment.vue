@@ -639,6 +639,28 @@ const handleClear = () => {
     }
 };
 
+const getLastUsedDepositAccount = (invoice: any) => {
+    // First check the invoice's own payments
+    if (invoice.payments && invoice.payments.length > 0) {
+        const lastPayment = invoice.payments[invoice.payments.length - 1];
+        if (lastPayment.depositToAccountId) {
+            return lastPayment.depositToAccountId;
+        }
+    }
+
+    // Then check individual line item payments
+    for (const item of invoice.lineItems) {
+        if (item.payments && item.payments.length > 0) {
+            const lastPayment = item.payments[item.payments.length - 1];
+            if (lastPayment.depositToAccountId) {
+                return lastPayment.depositToAccountId;
+            }
+        }
+    }
+
+    return null;
+};
+
 const handleInvoiceClick = (transaction: Transaction) => {
     console.log('Selected transaction:', transaction.type);
     selectedTransaction.value = transaction.type;
@@ -663,6 +685,12 @@ const handleInvoiceClick = (transaction: Transaction) => {
     const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
     const remainingBalance = Math.max(0, invoice.totalAmount - totalPaid);
 
+    // Auto-select the deposit account from the last payment
+    const lastUsedAccount = getLastUsedDepositAccount(invoice);
+    if (lastUsedAccount) {
+        form.value.depositTo = lastUsedAccount;
+    }
+
     // Set the form values
     form.value = {
         ...form.value,
@@ -675,10 +703,11 @@ const handleInvoiceClick = (transaction: Transaction) => {
         totalAmount: invoice.totalAmount.toString(),
         paidAmount: totalPaid.toString(),
         amount: remainingBalance.toString(),
-        memo: invoice.memo || ''
+        memo: invoice.memo || '',
+        depositTo: lastUsedAccount || form.value.depositTo // Keep the auto-selected account or previous value
     };
 
-    // Rest of the existing code remains unchanged...
+    // Rest of the existing code...
     const isServiceInvoice = invoice.lineItems.some((item: any) =>
         item.description === customerData.value?.currentService?.service.ServiceName
     );
