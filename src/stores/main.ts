@@ -124,6 +124,27 @@ interface PaymentsData {
   totalPages: number;
 }
 
+// New interface for Transactions
+interface TransactionsData {
+  invoices: Array<any>;
+  payments: Array<any>;
+  transactions?: Array<any>;
+  summary: {
+    totalAmount: number;
+    totalBalance: number;
+    totalInvoices: number;
+    paidInvoices: number;
+    unpaidInvoices: number;
+    totalPayments: number;
+    totalPaymentAmount: number;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+  };
+  success: boolean;
+}
+
 export interface State {
   branchesData: BranchesData;
   equipmentData: EquipmentData;
@@ -134,6 +155,7 @@ export interface State {
   servicesData: ServicesData;
   invoicesData: InvoicesData;
   paymentsData: PaymentsData;
+  transactionsData: TransactionsData;
   token: string | null;
 }
 
@@ -226,6 +248,26 @@ export const useMainStore = defineStore('main', () => {
     page: 1,
     limit: 10,
     totalPages: 0
+  });
+
+  const transactionsData = ref<TransactionsData>({
+    invoices: [],
+    payments: [],
+    transactions: [],
+    summary: {
+      totalAmount: 0,
+      totalBalance: 0,
+      totalInvoices: 0,
+      paidInvoices: 0,
+      unpaidInvoices: 0,
+      totalPayments: 0,
+      totalPaymentAmount: 0
+    },
+    pagination: {
+      page: 1,
+      limit: 10
+    },
+    success: false
   });
 
   const token = ref<string | null>(null);
@@ -1147,6 +1189,39 @@ export const useMainStore = defineStore('main', () => {
     }
   };
 
+  const fetchLastPaymentNumber = async (branchAbbr: string) => {
+    try {
+      const response = await axiosInstance.get(`/api/invoices/last-payment-number/${branchAbbr}`);
+      return response.data.lastNumber || 0;
+    } catch (error) {
+      console.error('Error fetching last payment number:', error);
+      throw error;
+    }
+  };
+
+  const fetchTransactions = async (
+    customerId: string = '', 
+    type: 'all' | 'invoice' | 'payment' = 'all',
+    page: number = 1, 
+    limit: number = 10
+  ) => {
+    try {
+      const params = {
+        customerId,
+        type,
+        page,
+        limit
+      };
+      
+      const response = await axiosInstance.get('/api/invoices/transactions', { params });
+      transactionsData.value = response.data;
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw error;
+    }
+  };
+
   return {
     branchesData,
     fetchBranches,
@@ -1202,6 +1277,9 @@ export const useMainStore = defineStore('main', () => {
     paymentsData,
     fetchPayments,
     fetchCustomersDropdown,
-    fetchInvoiceByNumber
+    fetchInvoiceByNumber,
+    fetchLastPaymentNumber,
+    transactionsData,
+    fetchTransactions
   }
 })

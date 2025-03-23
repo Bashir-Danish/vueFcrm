@@ -6,6 +6,10 @@ export default {
     noPayments: 'No payments found',
     searchCustomers: 'Search customers...',
     selectCustomer: 'Select a customer',
+    transactionType: 'Transaction Type',
+    allTransactions: 'All',
+    invoicesOnly: 'Invoices',
+    paymentsOnly: 'Payments',
     columns: {
       id: 'ID',
       date: 'Date',
@@ -13,10 +17,16 @@ export default {
       amount: 'Amount',
       status: 'Status',
       referenceNo: 'Reference No',
+      balance: 'Balance',
+      type: 'Type',
       actions: 'Actions'
     },
+    types: {
+      invoice: 'Invoice',
+      payment: 'Payment'
+    },
     loading: 'Loading...',
-    loadingPayments: 'Loading payments...'
+    loadingPayments: 'Loading transactions...'
   },
   search: {
     title: 'Search Customers',
@@ -86,6 +96,7 @@ export default {
     overduePayment: 'Overdue Payment',
     transactionList: 'Transaction List',
     serviceDetails: 'Service Details',
+    quickbooksBalance: 'QuickBooks Balance',
     package: 'Package',
     price: 'Price',
     startDate: 'Start Date',

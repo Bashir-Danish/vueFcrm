@@ -6,17 +6,27 @@ export default {
     noPayments: 'هیچ پرداختی یافت نشد',
     searchCustomers: 'جستجوی مشتریان',
     selectCustomer: 'انتخاب مشتری',
+    transactionType: 'نوع تراکنش',
+    allTransactions: 'همه',
+    invoicesOnly: 'فاکتورها',
+    paymentsOnly: 'پرداخت‌ها',
     columns: {
       id: 'شناسه',
-      date: 'تاریخ', 
-      customer: 'مشتری',
+      date: 'تاریخ',
+      customer: 'مشتری', 
       amount: 'مبلغ',
       status: 'وضعیت',
-      actions: 'عملیات',
-      referenceNo: 'شماره مرجع'
+      referenceNo: 'شماره مرجع',
+      balance: 'مانده حساب',
+      type: 'نوع',
+      actions: 'عملیات'
+    },
+    types: {
+      invoice: 'فاکتور',
+      payment: 'پرداخت'
     },
     loading: 'در حال بارگیری...',
-    loadingPayments: 'در حال بارگیری پرداخت‌ها...'
+    loadingPayments: 'در حال بارگیری تراکنش‌ها...'
   },
   search: {
     title: 'جستجوی مشتریان',
@@ -70,11 +80,13 @@ export default {
     bank: 'انتقال بانکی'
   },
   common: {
+    list: 'پ',
     select: 'انتخاب کنید...',
     clear: 'پاک کردن',
     save: 'ذخیره',
     cancel: 'لغو',
-    view: 'نمایش'
+    view: 'نمایش',
+    submitting: 'در حال ثبت...'
   },
   receive: {
     title: 'دریافت پرداخت',
@@ -84,6 +96,7 @@ export default {
     overduePayment: 'پرداخت معوق',
     transactionList: 'لیست تراکنش‌ها',
     serviceDetails: 'جزئیات سرویس',
+    quickbooksBalance: 'QuickBooks',
     package: 'پکیج',
     price: 'قیمت',
     startDate: 'تاریخ شروع',
@@ -92,30 +105,35 @@ export default {
     cancelService: 'لغو سرویس',
     startNextService: 'شروع سرویس بعدی',
     status: 'وضعیت',
-    paidAmount: 'مبلغ پرداخت شده',
     active: 'فعال',
     inactive: 'غیرفعال',
     suspended: 'معلق',
     changeStatus: 'تغییر وضعیت',
     customerName: 'نام مشتری',
     customerId: 'شناسه مشتری',
-    totalAmount: 'مبلغ کل',
     paymentDate: 'تاریخ پرداخت',
     referenceNo: 'شماره مرجع',
     depositTo: 'واریز به',
-    selectDepositAccount: 'انتخاب حساب واریز',
     amount: 'مبلغ',
+    paidAmount: 'مبلغ پرداخت شده',
     packageNo: 'شماره پکیج',
     memo: 'یادداشت',
     saveAndPrint: 'ذخیره و چاپ',
     saveAndClose: 'ذخیره و بستن',
-    submitting: 'در حال ثبت...',
+    selectDepositAccount: 'انتخاب حساب واریز',
     usageStats: {
       used: 'استفاده شده',
       remaining: 'باقی مانده'
     },
+    devices: 'دستگاه‌ها',
+    quantity: 'تعداد',
+    unitPrice: 'قیمت واحد',
+    totalAmount: 'مبلغ کل',
+    deviceDetails: 'جزئیات دستگاه',
+    servicePayment: 'پرداخت سرویس',
+    devicePayment: 'پرداخت دستگاه',
     paymentHistory: 'تاریخچه پرداخت',
     totalToBePaid: 'مجموع برای پرداخت',
-    remainingBalance: 'مانده حساب',
+    remainingBalance: 'مانده حساب'
   }
 }

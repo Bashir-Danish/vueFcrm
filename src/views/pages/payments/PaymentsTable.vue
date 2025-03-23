@@ -8,6 +8,7 @@ import InvoiceDialog from './InvoiceDialog.vue';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-vue-next';
 import ScrollArea from '@/components/ui/scroll-area/ScrollArea.vue';
+import { formatCurrency } from '@/utils/formatters';
 import {
   Select,
   SelectContent,
@@ -52,32 +53,59 @@ const page = ref(1);
 // Add loading state for view button
 const loadingInvoiceId = ref<string | null>(null);
 
-const handleViewInvoice = async (payment: any) => {
+const handleViewInvoice = async (item: any) => {
   try {
-    loadingInvoiceId.value = payment.id;
-    console.log('Handling view invoice for payment:', payment);
-    const invoiceNumber = payment.referenceNo.split('-').slice(0, -1).join('-');
-    console.log('Fetching invoice number:', invoiceNumber);
+    loadingInvoiceId.value = item.id;
+    console.log('Handling view item:', item);
     
-    const invoice = await store.fetchInvoiceByNumber(invoiceNumber);
-    console.log('Fetched invoice:', invoice);
+    // Different handling based on transaction type
+    if (item.type === 'invoice') {
+      // For invoices, use the docNumber
+      const invoiceNumber = item.docNumber;
+      console.log('Fetching invoice number:', invoiceNumber);
+      
+      const invoice = await store.fetchInvoiceByNumber(invoiceNumber);
+      console.log('Fetched invoice:', invoice);
 
-    if (!invoice) {
+      if (!invoice) {
+        toast({
+          title: "Error",
+          description: "Invoice not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      selectedInvoice.value = invoice;
+      dialogOpen.value = true;
+    } else if (item.type === 'payment') {
+      // For payments, use the payment id or docNumber
+      const paymentNumber = item.docNumber || item.id;
+      console.log('Viewing payment:', paymentNumber);
+      
+      // If payment is linked to an invoice, get the invoice details
+      if (item.linkedInvoices && item.linkedInvoices.length > 0) {
+        const linkedInvoice = item.linkedInvoices[0];
+        const invoice = await store.fetchInvoiceByNumber(linkedInvoice.invoiceId);
+        
+        if (invoice) {
+          selectedInvoice.value = invoice;
+          dialogOpen.value = true;
+          return;
+        }
+      }
+      
+      // If no invoice was found or no linked invoices, show a toast with payment details
       toast({
-        title: "Error",
-        description: "Invoice not found",
-        variant: "destructive",
+        title: "Payment Details",
+        description: `Payment #${paymentNumber} for ${item.amount.toFixed(2)}`,
       });
-      return;
     }
-
-    selectedInvoice.value = invoice;
-    dialogOpen.value = true;
   } catch (error) {
-    console.error('Error fetching invoice details:', error);
+    console.error('Error fetching item details:', error);
     toast({
       title: "Error",
-      description: error instanceof Error ? error.message : "Failed to fetch invoice details",
+      description: error instanceof Error ? error.message : "Failed to fetch details",
       variant: "destructive",
     });
   } finally {
@@ -89,11 +117,11 @@ const handleViewInvoice = async (payment: any) => {
 const columns = createColumns(handleViewInvoice, loadingInvoiceId);
 
 const filterConfigs = {
-  status: [
-    { label: 'Completed', value: 'completed' },
-    { label: 'Pending', value: 'pending' },
-    { label: 'Failed', value: 'failed' },
-  ]
+  // status: [
+  //   { label: 'Completed', value: 'completed' },
+  //   { label: 'Pending', value: 'pending' },
+  //   { label: 'Failed', value: 'failed' },
+  // ]
 };
 
 // Add initial customer loading function
@@ -197,8 +225,18 @@ const handleScroll = async (event: Event) => {
   }
 };
 
+// Handle pagination changes
+const handlePageChange = (page: number) => {
+  emit('page-change', page);
+};
+
+// Handle limit changes
+const handleLimitChange = (limit: number) => {
+  emit('limit-change', limit);
+};
+
 // Define emits
-const emit = defineEmits(['customer-change']);
+const emit = defineEmits(['customer-change', 'page-change', 'limit-change']);
 </script>
 
 <template>
@@ -206,13 +244,15 @@ const emit = defineEmits(['customer-change']);
     <DataTable 
       :columns="columns" 
       :data="data.payments || []"
-      :filter-options="['customer', 'referenceNo', 'status']"
+      :filter-options="['customerName', 'docNumber', 'status', 'type']"
       :filter-configs="filterConfigs"
       :filter-counts="{}"
       :page="data.page"
       :limit="data.limit"
       :total-count="data.totalCount"
       :loading="props.loading"
+      @page-change="handlePageChange"
+      @limit-change="handleLimitChange"
     >
       <template #toolbar>
         <div class="flex items-center space-x-4">

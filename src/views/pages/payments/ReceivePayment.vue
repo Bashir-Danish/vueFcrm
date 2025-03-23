@@ -206,23 +206,16 @@
                         </CardHeader>
                         <CardContent>
                             <div class="space-y-3 md:space-y-4">
-                                <div class="p-3 md:p-4  rounded-lg">
+                                <div class="p-3 md:p-4 rounded-lg">
                                     <div class="mb-3 md:mb-4">
                                         <div class="text-xs md:text-sm font-medium text-muted-foreground">
                                             {{ $t('payments.receive.summary') }}
                                         </div>
-                                        <div class="text-xl md:text-2xl font-bold text-destructive">-41,500.00 Af</div>
-                                        <div class="text-xs md:text-sm text-muted-foreground">
-                                            {{ $t('payments.receive.openBalance') }}
+                                        <div class="text-xl md:text-2xl font-bold" :class="summary.arBalance < 0 ? 'text-destructive' : 'text-green-600'">
+                                            {{ summary.arBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Af
                                         </div>
-                                    </div>
-                                    <div class="mb-3 md:mb-4">
-                                        <div class="text-xs md:text-sm font-medium text-muted-foreground">
-                                            {{ $t('payments.receive.summary') }}
-                                        </div>
-                                        <div class="text-xl md:text-2xl font-bold text-destructive">-41,500.00 Af</div>
                                         <div class="text-xs md:text-sm text-muted-foreground">
-                                            {{ $t('payments.receive.openBalance') }}
+                                            {{ $t('payments.receive.quickbooksBalance') }}
                                         </div>
                                     </div>
                                 </div>
@@ -265,7 +258,7 @@
                                         </Label>
 
                                         <!-- Payment History Popup -->
-                                        <div v-if="hoveredInvoice === transaction.type.split('#')[1] && hasPayments(transaction.type)" 
+                                        <div v-if="hoveredInvoice === transaction.type.split('#')[1] || transaction.type === 'Unapplied Payment'" 
                                              class="fixed z-50 bg-card rounded-lg shadow-lg p-3 min-w-[300px] max-w-[400px]
                                                         border border-border opacity-0 invisible group-hover:opacity-100 
                                                         group-hover:visible transition-all duration-200 tooltip"
@@ -273,30 +266,60 @@
                                             @click.stop>
                                             <div class="text-xs space-y-2">
                                                 <div class="font-semibold text-sm mb-2 text-foreground/90 border-b pb-2">
-                                                    {{ t('payments.receive.paymentHistory') }}
+                                                    {{ transaction.type === 'Unapplied Payment' 
+                                                        ? t('payments.receive.unappliedPayment')
+                                                        : t('payments.receive.paymentHistory') }}
                                                 </div>
+
+                                                <!-- For Unapplied Payment -->
+                                                <div v-if="transaction.type === 'Unapplied Payment'" class="text-green-600">
+                                                    <div class="flex justify-between py-1">
+                                                        <span>{{ t('payments.receive.availableAmount') }}</span>
+                                                        <span class="font-medium">{{ formatCurrency(transaction.amount) }}</span>
+                                                    </div>
+                                                    <div class="text-muted-foreground text-xs mt-1">
+                                                        {{ t('payments.receive.autoApplyNote') }}
+                                                    </div>
+                                                </div>
+
+                                                <!-- For Regular Invoices -->
+                                                <template v-else>
+                                                    <!-- Show recorded payments -->
                                                 <div v-for="payment in getInvoicePayments(transaction.type)"
                                                     :key="payment.id"
-                                                    class="flex justify-between py-1 hover:bg-muted/50 rounded px-1">
-                                                    <span class="text-muted-foreground">{{ formatDate(payment.date) }}</span>
-                                                    <span class="font-medium text-foreground">{{ formatCurrency(payment.amount) }}</span>
+                                                        class="flex justify-between py-1 hover:bg-muted/50 rounded px-1"
+                                                        :class="{ 'text-muted-foreground': !payment.isAutoApplied }">
+                                                        <span>{{ formatDate(payment.date) }}</span>
+                                                        <span class="font-medium">{{ formatCurrency(payment.amount) }}</span>
+                                                    </div>
+
+                                                    <!-- Show auto-applied amount if any -->
+                                                    <div v-if="getAutoAppliedAmount(transaction.type) > 0"
+                                                         class="flex justify-between py-1 hover:bg-muted/50 rounded px-1 text-green-600">
+                                                        <span>{{ t('payments.receive.autoApplied') }}</span>
+                                                        <span class="font-medium">{{ formatCurrency(getAutoAppliedAmount(transaction.type)) }}</span>
                                                 </div>
 
                                                 <!-- Total and Balance Section -->
                                                 <div class="border-t mt-2 pt-2 space-y-1">
                                                     <div class="flex justify-between text-sm">
-                                                        <span class="text-muted-foreground">{{ t('payments.receive.totalToBePaid') }}</span>
-                                                        <span class="font-medium text-green-500">
-                                                            {{ transaction.totalAmount }}
+                                                            <span class="text-muted-foreground">{{ t('payments.receive.totalAmount') }}</span>
+                                                            <span class="font-medium">
+                                                                {{ formatCurrency(transaction.totalAmount) }}
                                                         </span>
                                                     </div>
                                                     <div class="flex justify-between text-sm">
                                                         <span class="text-muted-foreground">{{ t('payments.receive.remainingBalance') }}</span>
-                                                        <span class="font-medium text-red-500">
+                                                            <span class="font-medium" :class="{
+                                                                'text-green-600': transaction.status === 'paid',
+                                                                'text-yellow-600': transaction.status === 'partially_paid',
+                                                                'text-red-600': transaction.status === 'unpaid'
+                                                            }">
                                                             {{ formatCurrency(Math.abs(transaction.amount)) }}
                                                         </span>
                                                     </div>
                                                 </div>
+                                                </template>
                                             </div>
                                         </div>
                                     </div>
@@ -422,6 +445,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMainStore } from '@/stores/main'
+import { useAuthStore } from '@/stores/auth'
 import { useI18n } from 'vue-i18n'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -442,6 +466,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/utils/formatters'
+import instance from '@/utils/axios'
 
 interface Customer {
     _id: string;
@@ -465,7 +490,7 @@ interface Transaction {
     date: string;
     type: string;
     amount: number;
-    status: string;
+    status: 'paid' | 'partially_paid' | 'unpaid';
     memo: string;
     totalAmount: number;
 }
@@ -480,6 +505,21 @@ interface Invoice {
     memo: string;
     lineItems: any[];
     payments: any[];
+    summary?: {
+        totalAmount: number;
+        totalBalance: number;
+        paidInvoices: number;
+        unpaidInvoices: number;
+        totalInvoices: number;
+        unappliedAmount: number;
+        quickBooksBalance: number;
+        arBalance: number;
+    };
+}
+
+interface Summary {
+    quickBooksBalance: number;
+    arBalance: number;
 }
 
 interface DepositAccount {
@@ -525,6 +565,11 @@ const hoveredInvoice = ref<string | null>(null)
 const mousePosition = ref({ x: 0, y: 0 })
 const isSubmitting = ref(false)
 
+const summary = ref<Summary>({
+    quickBooksBalance: 0,
+    arBalance: 0
+})
+
 const handleSubmit = async () => {
     try {
         isSubmitting.value = true;  // Start loading
@@ -533,23 +578,6 @@ const handleSubmit = async () => {
             toast({
                 title: 'Error',
                 description: t('payments.receive.selectDepositAccount'),
-                variant: 'destructive'
-            });
-            return;
-        }
-
-        // Get the base invoice number by removing the payment suffix
-        const baseInvoiceNumber = form.value.referenceNo.split('-').slice(0, -1).join('-');
-        console.log('Looking for invoice with number:', baseInvoiceNumber); // Debug log
-
-        // Find the invoice using the base number
-        const invoice = invoices.value.find(inv => inv.docNumber === baseInvoiceNumber);
-        console.log('Found invoice:', invoice); // Debug log
-
-        if (!invoice) {
-            toast({
-                title: 'Error',
-                description: t('payments.receive.invoiceNotFound'),
                 variant: 'destructive'
             });
             return;
@@ -574,17 +602,67 @@ const handleSubmit = async () => {
             return;
         }
 
+        // If no invoice is selected, create a deposit
+        if (!selectedTransaction.value) {
+            const depositData = {
+                amount: paymentAmount,
+                customerId: customerData.value.quickbooksCustomerId,
+                depositToAccountId: form.value.depositTo,
+                referenceNo: form.value.referenceNo,
+                memo: form.value.memo || 'Customer deposit'
+            };
+
+            console.log('Creating deposit with data:', depositData);
+
+            const response = await instance.post('/api/invoices/deposit', depositData);
+
+            if (response.data.success) {
+                toast({
+                    title: 'Success',
+                    description: t('payments.receive.depositSuccess'),
+                });
+
+                // Clear form
+                handleClear();
+            }
+
+            return;
+        }
+
+        // If invoice is selected, proceed with normal payment
+        console.log('Form reference number:', form.value.referenceNo); // Debug log
+        console.log('Available invoices:', invoices.value); // Debug log
+
+        // Get the invoice number from the selected transaction
+        const selectedInvoiceNumber = selectedTransaction.value.split('#')[1];
+        console.log('Selected invoice number:', selectedInvoiceNumber); // Debug log
+
+        // Find the invoice using the selected invoice number
+        const invoice = invoices.value.find(inv => inv.docNumber === selectedInvoiceNumber);
+        console.log('Found invoice:', invoice); // Debug log
+
+        if (!invoice) {
+            toast({
+                title: 'Error',
+                description: t('payments.receive.invoiceNotFound') + ` (${selectedInvoiceNumber})`,
+                variant: 'destructive'
+            });
+            return;
+        }
+
         // Create payment data
         const paymentData = {
             invoiceId: invoice.id,
             amount: paymentAmount,
             customerId: customerData.value.quickbooksCustomerId,
-            lineItemId: invoice.id,
+            lineItemId: invoice.lineItems[0]?.Id || invoice.lineItems[0]?.Id || null, // Get the first line item ID or null
             depositToAccountId: form.value.depositTo,
-            referenceNo: form.value.referenceNo, // Keep the full reference number with suffix
+            referenceNo: form.value.referenceNo, 
             memo: form.value.memo || `Payment for invoice #${invoice.docNumber}`
         };
 
+        console.log('Invoice line items:', invoice.lineItems);
+        
         console.log('Submitting payment with data:', paymentData);
 
         const response = await mainStore.makeInvoicePayment(paymentData);
@@ -596,7 +674,7 @@ const handleSubmit = async () => {
             // Update local data
             customerData.value = result.customer as Customer;
             invoices.value = result.invoices;
-            transactions.value = transformInvoicesToTransactions(result.invoices);
+            transactions.value = transformInvoicesToTransactions(result.invoices, result.summary);
 
             toast({
                 title: 'Success',
@@ -661,7 +739,7 @@ const getLastUsedDepositAccount = (invoice: any) => {
     return null;
 };
 
-const handleInvoiceClick = (transaction: Transaction) => {
+const handleInvoiceClick = async (transaction: Transaction) => {
     console.log('Selected transaction:', transaction.type);
     selectedTransaction.value = transaction.type;
 
@@ -674,65 +752,127 @@ const handleInvoiceClick = (transaction: Transaction) => {
     // Reset form
     handleClear();
 
-    // Get the number of existing payments for this invoice
-    const existingPaymentsCount = invoice.payments?.length || 0;
-    
-    // Generate the next reference number by adding 1 to the count
-    const nextPaymentNumber = existingPaymentsCount + 1;
-    const nextReferenceNumber = `${invoice.docNumber}-${nextPaymentNumber}`;
+    try {
+        // Get the branch name from the auth store
+        const authStore = useAuthStore();
+        const branchName = authStore.user?.branch_id?.name || 'UNK';
+        
+        // Create branch abbreviation (take first letter of each word)
+        const branchAbbr = branchName
+            .split(' ')
+            .map((word: string) => word.charAt(0))
+            .join('')
+            .toUpperCase();
 
-    // Calculate total paid amount and remaining balance
-    const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
-    const remainingBalance = Math.max(0, invoice.totalAmount - totalPaid);
+        // First, get the last payment number from QuickBooks
+        const lastPaymentResponse = await instance.get(`/api/invoices/payments`, {
+            params: {
+                customerId: customerData.value?.quickbooksCustomerId,
+                limit: 1,
+                page: 1
+            }
+        });
 
-    // Auto-select the deposit account from the last payment
-    const lastUsedAccount = getLastUsedDepositAccount(invoice);
-    if (lastUsedAccount) {
-        form.value.depositTo = lastUsedAccount;
-    }
+        // Extract the last payment number if exists
+        let lastPaymentNumber = 0;
+        if (lastPaymentResponse.data.payments && lastPaymentResponse.data.payments.length > 0) {
+            const lastPayment = lastPaymentResponse.data.payments[0];
+            // Try to extract number from reference number if it exists
+            if (lastPayment.referenceNo) {
+                const match = lastPayment.referenceNo.match(/\d+$/);
+                if (match) {
+                    lastPaymentNumber = parseInt(match[0]);
+                }
+            }
+        }
 
-    // Set the form values
-    form.value = {
-        ...form.value,
-        customerName: customerData.value?.name || '',
-        customerLastName: customerData.value?.lastName || '',
-        customerId: customerData.value?._id || '',
-        username: customerData.value?.username || '',
-        paymentDate: new Date(),
-        referenceNo: nextReferenceNumber,
-        totalAmount: invoice.totalAmount.toString(),
-        paidAmount: totalPaid.toString(),
-        amount: remainingBalance.toString(),
-        memo: invoice.memo || '',
-        depositTo: lastUsedAccount || form.value.depositTo // Keep the auto-selected account or previous value
-    };
+        // Increment the number for the new payment
+        const nextNumber = lastPaymentNumber + 1;
+        
+        // Format: BRANCH-NUMBER (e.g., KB-1)
+        const nextReferenceNumber = `${branchAbbr}-${nextNumber}`;
 
-    // Rest of the existing code...
-    const isServiceInvoice = invoice.lineItems.some((item: any) =>
-        item.description === customerData.value?.currentService?.service.ServiceName
-    );
+        // Calculate remaining balance from QuickBooks balance
+        const remainingBalance = invoice.balance;
 
-    if (isServiceInvoice) {
-        selectedInvoiceType.value = 'service';
-        selectedInvoiceItems.value = [];
+        // Find the appropriate deposit account to use
+        const findDepositAccount = () => {
+            // First try to get the last used account for this specific invoice
+            let account = getLastUsedDepositAccount(invoice);
+            
+            // If no account found for this invoice, try to get the last used account from any invoice
+            if (!account) {
+                for (const inv of invoices.value) {
+                    const lastUsed = getLastUsedDepositAccount(inv);
+                    if (lastUsed) {
+                        account = lastUsed;
+                        break;
+                    }
+                }
+            }
+            
+            // If still no account found and we have deposit accounts, use the first one
+            if (!account && depositAccounts.value.length > 0) {
+                account = depositAccounts.value[0].id;
+            }
 
-        const startDate = new Date(customerData.value?.currentService?.startDate || '');
-        const endDate = new Date(startDate);
-        endDate.setMonth(endDate.getMonth() + 6);
-
-        form.value = {
-            ...form.value,
-            package: customerData.value?.currentService?.service.ServiceName || '',
-            startDate: startDate,
-            endDate: endDate
+            return account || '';
         };
-    } else {
-        selectedInvoiceType.value = 'device';
-        selectedInvoiceItems.value = invoice.lineItems;
-        form.value.package = '';
-    }
 
-    console.log('Form updated:', form.value);
+        const selectedDepositAccount = findDepositAccount();
+        console.log('Selected deposit account:', selectedDepositAccount);
+
+        // Set the form values
+        const formValues = {
+            customerName: customerData.value?.name || '',
+            customerLastName: customerData.value?.lastName || '',
+            customerId: customerData.value?._id || '',
+            username: customerData.value?.username || '',
+            paymentDate: new Date(),
+            referenceNo: nextReferenceNumber,
+            totalAmount: invoice.totalAmount.toString(),
+            paidAmount: (invoice.totalAmount - invoice.balance).toString(),
+            amount: remainingBalance.toString(),
+            memo: invoice.memo || '',
+            depositTo: selectedDepositAccount,
+            package: '',
+            packageNo: '',
+            startDate: new Date(),
+            endDate: new Date()
+        };
+
+        // Handle service or device invoice
+        const isServiceInvoice = invoice.lineItems.some((item: any) =>
+            item.description === customerData.value?.currentService?.service.ServiceName
+        );
+
+        if (isServiceInvoice) {
+            selectedInvoiceType.value = 'service';
+            selectedInvoiceItems.value = [];
+
+            const startDate = new Date(customerData.value?.currentService?.startDate || '');
+            const endDate = new Date(startDate);
+            endDate.setMonth(endDate.getMonth() + 6);
+
+            formValues.package = customerData.value?.currentService?.service.ServiceName || '';
+            formValues.startDate = startDate;
+            formValues.endDate = endDate;
+        } else {
+            selectedInvoiceType.value = 'device';
+            selectedInvoiceItems.value = invoice.lineItems;
+        }
+
+        // Update the form with all values at once
+        form.value = formValues;
+
+    } catch (error) {
+        console.error('Error generating reference number:', error);
+        toast({
+            title: 'Error',
+            description: 'Failed to generate reference number',
+            variant: 'destructive'
+        });
+    }
 };
 
 const formatDate = (dateString?: string) => {
@@ -752,37 +892,34 @@ const fetchAccounts = async () => {
         })
     }
 };
-
-// Transform invoices into transactions with payment status
-const transformInvoicesToTransactions = (invoices: Invoice[]) => {
+const transformInvoicesToTransactions = (invoices: Invoice[], apiSummary: Summary): Transaction[] => {
     const transactions: Transaction[] = [];
 
-    invoices.forEach(invoice => {
-        // Calculate total paid amount from all payments
-        const totalPaid = invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
-        // Calculate actual remaining balance
-        const remainingBalance = invoice.totalAmount - totalPaid;
+    // Add unpaid/partially paid invoices to transactions
+    invoices.forEach((invoice: Invoice) => {
+        if (invoice.balance === 0) return;
 
-        // Determine if invoice is fully paid
-        const isFullyPaid = Math.abs(remainingBalance) < 0.01; // Using small threshold for floating point comparison
+        const status = invoice.balance === 0 ? 'paid' 
+            : invoice.balance < invoice.totalAmount ? 'partially_paid' 
+            : 'unpaid';
 
-        // Only include invoices that are not fully paid
-        if (!isFullyPaid) {
-            transactions.push({
-                date: new Date(invoice.date).toLocaleDateString(),
-                type: `Invoice #${invoice.docNumber}`,
-                amount: -remainingBalance,
-                status: remainingBalance === invoice.totalAmount ? 'unpaid' : 'partially_paid',
-                memo: invoice.memo,
-                totalAmount: invoice.totalAmount
-            });
-        }
+        transactions.push({
+            date: new Date(invoice.date).toLocaleDateString(),
+            type: `Invoice #${invoice.docNumber}`,
+            amount: invoice.balance,
+            status,
+            memo: invoice.memo,
+            totalAmount: invoice.totalAmount
+        });
     });
 
-    // Sort transactions by date, most recent first
-    return transactions.sort((a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    // Use the server-calculated balances
+    summary.value = {
+        quickBooksBalance: apiSummary.quickBooksBalance,
+        arBalance: apiSummary.arBalance
+    };
+
+    return transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
 const getTooltipPosition = () => {
@@ -852,41 +989,116 @@ const hasPayments = (transactionType: string) => {
     return (invoice?.payments ?? []).length > 0;
 };
 
+// Add this function before onMounted
+const getNextReferenceNumber = async () => {
+    try {
+        // Get the branch name from the auth store
+        const authStore = useAuthStore();
+        const branchName = authStore.user?.branch_id?.name || 'UNK';
+        
+        // Create branch abbreviation (take first letter of each word)
+        const branchAbbr = branchName
+            .split(' ')
+            .map((word: string) => word.charAt(0))
+            .join('')
+            .toUpperCase();
+
+        // Get the last payment number from QuickBooks
+        const lastPaymentResponse = await instance.get(`/api/invoices/payments`, {
+            params: {
+                limit: 1,
+                page: 1,
+                search: branchAbbr // Add branch abbreviation to search
+            }
+        });
+
+        // Extract the last payment number if exists
+        let lastPaymentNumber = 0;
+        if (lastPaymentResponse.data.payments && lastPaymentResponse.data.payments.length > 0) {
+            const lastPayment = lastPaymentResponse.data.payments[0];
+            // Try to extract number from reference number if it exists
+            if (lastPayment.referenceNo) {
+                const match = lastPayment.referenceNo.match(new RegExp(`${branchAbbr}-(\\d+)$`));
+                if (match) {
+                    lastPaymentNumber = parseInt(match[1]);
+                }
+            }
+        }
+
+        // Increment the number for the new payment
+        const nextNumber = lastPaymentNumber + 1;
+        
+        // Format: BRANCH-NUMBER (e.g., KB-1)
+        return `${branchAbbr}-${nextNumber}`;
+    } catch (error) {
+        console.error('Error generating reference number:', error);
+        return '';
+    }
+};
+
+// Add this helper function after getInvoicePayments
+const getAutoAppliedAmount = (transactionType: string) => {
+    const invoiceNumber = transactionType.split('#')[1];
+    const invoice = invoices.value.find(inv => inv.docNumber === invoiceNumber);
+    if (!invoice) return 0;
+
+    // Calculate total from recorded payments
+    const totalRecordedPayments = invoice.payments.reduce((sum, payment) => 
+        sum + (payment.isAutoApplied ? 0 : payment.amount), 0);
+    
+    // Calculate auto-applied amount (difference between total paid and recorded payments)
+    const totalPaid = invoice.totalAmount - invoice.balance;
+    return Math.max(0, totalPaid - totalRecordedPayments);
+};
+
 onMounted(async () => {
     try {
-        loading.value = true
-        const customerId = route.params.customerId as string
+        loading.value = true;
+        const customerId = route.params.customerId as string;
         if (!customerId) {
             toast({
                 title: 'Error',
                 description: 'Customer ID is required',
                 variant: 'destructive'
-            })
-            return
+            });
+            return;
         }
 
         await Promise.all([
             fetchAccounts(),
-            mainStore.fetchCustomerWithInvoices(customerId).then(({ customer, invoices: fetchedInvoices }) => {
-                customerData.value = customer as Customer
-                invoices.value = fetchedInvoices
+            mainStore.fetchCustomerWithInvoices(customerId).then(({ customer, invoices: fetchedInvoices, summary: apiSummary }) => {
+                console.log('\n[Frontend] Received Customer Data:', customer);
+                console.log('\n[Frontend] Received Raw Invoices:', fetchedInvoices);
+                console.log('\n[Frontend] Received Summary:', apiSummary);
+                
+                customerData.value = customer as Customer;
+                invoices.value = fetchedInvoices;
 
-                // Transform invoices into transactions including payments
-                transactions.value = transformInvoicesToTransactions(fetchedInvoices);
+                // Transform invoices into transactions including payments, passing the summary
+                const transformedTransactions = transformInvoicesToTransactions(fetchedInvoices, apiSummary);
+                console.log('\n[Frontend] Transformed Transactions:', transformedTransactions);
+                
+                transactions.value = transformedTransactions;
+            }),
+            // Get next reference number and set it in the form
+            getNextReferenceNumber().then(refNo => {
+                if (refNo) {
+                    form.value.referenceNo = refNo;
+                }
             })
-        ])
+        ]);
 
     } catch (error: unknown) {
-        console.error('Error fetching data:', error)
+        console.error('Error fetching data:', error);
         toast({
             title: 'Error',
             description: error instanceof Error ? error.message : 'Failed to fetch data',
             variant: 'destructive'
-        })
+        });
     } finally {
-        loading.value = false
+        loading.value = false;
     }
-})
+});
 </script>
 
 <style scoped>
