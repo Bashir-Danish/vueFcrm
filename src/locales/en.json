@@ -10,5 +10,11 @@
       "done": "Done",
       "others": "Others"
     }
+  },
+  "payments": {
+    "receive": {
+      "quickbooksBalance": "QuickBooks Balance",
+      "deltasibBalance": "DeltaSIB Balance"
+    }
   }
 } 

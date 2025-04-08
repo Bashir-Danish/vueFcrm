@@ -40,7 +40,7 @@ const roleBasedSidebarLinks = [
     label: "sidebar.sales.main",
     href: "/customer",
     icon: WalletCards,
-    access: ["admin", "sales", "financeAdmin", "noc", "installer"],
+    access: ["admin", "sales", "financeAdmin", "noc", "installer" , "creditChecker"],
     show: true,
     children: [
       {

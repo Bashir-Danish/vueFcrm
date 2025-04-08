@@ -206,16 +206,26 @@
                         </CardHeader>
                         <CardContent>
                             <div class="space-y-3 md:space-y-4">
-                                <div class="p-3 md:p-4 rounded-lg">
+                                <!-- QuickBooks Balance -->
+                                <div class="p-3 md:p-4 rounded-lg bg-muted/50">
                                     <div class="mb-3 md:mb-4">
                                         <div class="text-xs md:text-sm font-medium text-muted-foreground">
-                                            {{ $t('payments.receive.summary') }}
+                                            {{ $t('payments.receive.quickbooksBalance') }}
                                         </div>
                                         <div class="text-xl md:text-2xl font-bold" :class="summary.arBalance < 0 ? 'text-destructive' : 'text-green-600'">
                                             {{ summary.arBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Af
                                         </div>
-                                        <div class="text-xs md:text-sm text-muted-foreground">
-                                            {{ $t('payments.receive.quickbooksBalance') }}
+                                    </div>
+                                </div>
+
+                                <!-- DeltaSIB Balance -->
+                                <div class="p-3 md:p-4 rounded-lg bg-muted/50">
+                                    <div class="mb-3 md:mb-4">
+                                        <div class="text-xs md:text-sm font-medium text-muted-foreground">
+                                            {{ $t('payments.receive.deltasibBalance') }}
+                                        </div>
+                                        <div class="text-xl md:text-2xl font-bold " :class="deltaSibPayBalanceClass">
+                                            {{ deltaSibBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Af
                                         </div>
                                     </div>
                                 </div>
@@ -476,6 +486,7 @@ interface Customer {
     quickbooksCustomerId: string;
     custType: 'individual' | 'business';
     companyName?: string;
+    deltaSibUserId?: string;
     currentService?: {
         service: {
             ServiceName: string;
@@ -483,6 +494,7 @@ interface Customer {
         };
         startDate: string;
         endDate: string;
+        payBalance?: number;
     };
 }
 
@@ -528,6 +540,15 @@ interface DepositAccount {
     accountType: string;
 }
 
+interface DeltaSibPayment {
+    User_Payment_Id: string;
+    PaymentType: string;
+    Price: string;
+    Paybalance: string;
+    User_PaymentCDT: string;
+    Comment: string;
+}
+
 const route = useRoute()
 const mainStore = useMainStore()
 const { toast } = useToast()
@@ -539,6 +560,8 @@ const transactions = ref<Transaction[]>([])
 const status = ref('active')
 const invoices = ref<Invoice[]>([])
 const depositAccounts = ref<DepositAccount[]>([])
+const deltaSibPayments = ref<DeltaSibPayment[]>([])
+const deltaSibBalance = ref(0)
 
 const form = ref({
     customerName: '',
@@ -569,6 +592,11 @@ const summary = ref<Summary>({
     quickBooksBalance: 0,
     arBalance: 0
 })
+
+const deltaSibPayBalanceClass = computed(() => {
+    const balance = deltaSibBalance.value;
+    return balance < 0 ? 'text-red-700' : 'text-green-600';
+});
 
 const handleSubmit = async () => {
     try {
@@ -1066,13 +1094,29 @@ onMounted(async () => {
 
         await Promise.all([
             fetchAccounts(),
-            mainStore.fetchCustomerWithInvoices(customerId).then(({ customer, invoices: fetchedInvoices, summary: apiSummary }) => {
+            mainStore.fetchCustomerWithInvoices(customerId).then(async ({ customer, invoices: fetchedInvoices, summary: apiSummary }) => {
                 console.log('\n[Frontend] Received Customer Data:', customer);
                 console.log('\n[Frontend] Received Raw Invoices:', fetchedInvoices);
                 console.log('\n[Frontend] Received Summary:', apiSummary);
                 
                 customerData.value = customer as Customer;
                 invoices.value = fetchedInvoices;
+
+                // Fetch DeltaSIB payments if customer has deltaSibUserId
+                if (customerData.value?.deltaSibUserId) {
+                    try {
+                        const response = await instance.get(`/api/invoices/deltasib-payments/${customerData.value.deltaSibUserId}`);
+                        deltaSibPayments.value = response.data.payments;
+                        // Update deltaSibBalance with currentBalance from API response
+                        deltaSibBalance.value = response.data.currentBalance;
+                        // Update the currentService payBalance
+                        if (customerData.value.currentService) {
+                            customerData.value.currentService.payBalance = response.data.currentBalance;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching DeltaSIB payments:', error);
+                    }
+                }
 
                 // Transform invoices into transactions including payments, passing the summary
                 const transformedTransactions = transformInvoicesToTransactions(fetchedInvoices, apiSummary);

@@ -97,6 +97,7 @@ export default {
     transactionList: 'Transaction List',
     serviceDetails: 'Service Details',
     quickbooksBalance: 'QuickBooks Balance',
+    deltasibBalance: 'DeltaSIB Balance',
     package: 'Package',
     price: 'Price',
     startDate: 'Start Date',

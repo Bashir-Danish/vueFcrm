@@ -31,10 +31,10 @@ const toast = useToast();
 const authStore = useAuthStore();
 
 const steps = [
-  { title: t('customers.manage.steps.customer'), component: CustomerForm, roles: ["admin", "noc" ,"installer"] },
-  { title: t('customers.manage.steps.devices'), component: DevicesForm, roles: ["admin", "noc", "installer"] },
-  { title: t('customers.manage.steps.assign'), component: Assignment, roles: ["admin", "noc", "installer"] },
-  { title: t('customers.manage.steps.installation'), component: InstallationForm, roles: ["admin","noc", "installer"] },
+  { title: t('customers.manage.steps.customer'), component: CustomerForm, roles: ["admin", "noc" ,"installer" , "creditChecker"] },
+  { title: t('customers.manage.steps.devices'), component: DevicesForm, roles: ["admin", "noc", "installer" , "creditChecker"] },
+  { title: t('customers.manage.steps.assign'), component: Assignment, roles: ["admin", "noc", "installer" , "creditChecker"] },
+  { title: t('customers.manage.steps.installation'), component: InstallationForm, roles: ["admin","noc", "installer" , "creditChecker"] },
 ];
 
 const accessibleSteps = computed(() => {
