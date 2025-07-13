@@ -8,7 +8,6 @@ import InvoiceDialog from './InvoiceDialog.vue';
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-vue-next';
 import ScrollArea from '@/components/ui/scroll-area/ScrollArea.vue';
-import { formatCurrency } from '@/utils/formatters';
 import {
   Select,
   SelectContent,

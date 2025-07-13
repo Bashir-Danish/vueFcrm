@@ -200,7 +200,7 @@ const handleSendOTP = async () => {
     loading.value = true
     otpStatus.value = 'default'
 
-    const userEmail = authStore.user?.email
+    const userEmail = authStore.user?.email 
     if (!userEmail) {
       throw new Error('userNotFound')
     }

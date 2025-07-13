@@ -2,10 +2,10 @@
   <div class="container mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold my-4 sm:my-6 rtl:text-right">
-        {{ $t('payments.list.title') }}
+        {{ t('payments.list.title') }}
       </h1>
       <router-link to="/payments/payment" class="btn btn-primary">
-        {{ $t('payments.list.addPayment') }}
+        {{ t('payments.list.addPayment') }}
       </router-link>
     </div>
 
@@ -16,19 +16,19 @@
             value="all" 
             @click="handleTypeChange"
           >
-            {{ $t('payments.list.allTransactions') }}
+            {{ t('payments.list.allTransactions') }}
           </TabsTrigger>
           <TabsTrigger 
             value="invoice" 
             @click="handleTypeChange"
           >
-            {{ $t('payments.list.invoicesOnly') }}
+            {{ t('payments.list.invoicesOnly') }}
           </TabsTrigger>
           <TabsTrigger 
             value="payment" 
             @click="handleTypeChange"
           >
-            {{ $t('payments.list.paymentsOnly') }}
+            {{ t('payments.list.paymentsOnly') }}
           </TabsTrigger>
         </TabsList>
       </Tabs>

@@ -1,105 +1,107 @@
 <template>
-  <div class="flex gap-4 justify-center">
-    <input
-      v-for="(index) in 6"
-      :key="index"
-      type="text"
-      inputmode="numeric"
-      :value="digits[index]"
-      @input="handleInput($event, index)"
-      @keydown="handleKeydown($event, index)"
-      @paste="handlePaste"
-      maxlength="1"
-      :disabled="disabled"
-      class="w-12 h-12 text-center border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-lg bg-background"
-      :class="{
-        'border-input': status === 'default',
-        'border-green-500 ring-green-500': status === 'success',
-        'border-red-500 ring-red-500': status === 'error'
-      }"
-      ref="inputRefs"
-    />
+  <div class="grid grid-cols-6 gap-2">
+    <template v-for="(digit, index) in 6" :key="index">
+      <input
+        type="text"
+        inputmode="numeric"
+        maxlength="1"
+        :value="modelValue[index] || ''"
+        :disabled="disabled"
+        :class="[
+          'block w-full h-12 rounded-md border-0 py-1.5 text-center text-xl font-semibold shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6',
+          status === 'error' ? 'ring-red-300 text-red-900 placeholder:text-red-300 focus:ring-red-500' 
+            : 'ring-gray-300 text-gray-900 placeholder:text-gray-400 focus:ring-indigo-600',
+          disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-white'
+        ]"
+        @input="handleInput($event, index)"
+        @keydown="handleKeydown($event, index)"
+        @paste="handlePaste"
+        @focus="(e) => (e.target as HTMLInputElement).select()"
+        :ref="(el) => { if (el) inputRefs[index] = el as HTMLInputElement }"
+      />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  status: {
-    type: String,
-    default: 'default',
-    validator: (value: string) => ['default', 'success', 'error'].includes(value)
-  }
-})
+const props = defineProps<{
+  modelValue: string
+  disabled?: boolean
+  status?: 'error' | 'loading'
+}>()
 
-const emit = defineEmits(['update:modelValue', 'complete'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'complete', value: string): void
+}>()
 
-const digits = ref(Array(6).fill(''))
 const inputRefs = ref<HTMLInputElement[]>([])
-
-// Initialize from modelValue if provided
-watch(() => props.modelValue, (newValue) => {
-  if (newValue) {
-    const digitArray = newValue.split('').slice(0, 6)
-    digits.value = [...digitArray, ...Array(6 - digitArray.length).fill('')]
-  }
-}, { immediate: true })
 
 const handleInput = (event: Event, index: number) => {
   const input = event.target as HTMLInputElement
-  const value = input.value.replace(/\D/g, '')
+  let value = input.value
+
+  // Only allow numbers
+  value = value.replace(/\D/g, '')
   
-  if (value) {
-    digits.value[index] = value
-    emit('update:modelValue', digits.value.join(''))
-    
-    // Move to next input
-    if (index < 5) {
-      inputRefs.value[index + 1]?.focus()
-    }
-    
-    // Check if all digits are filled
-    if (digits.value.join('').length === 6) {
-      emit('complete', digits.value.join(''))
-    }
-  } else {
-    // Clear the current input if the value is empty
-    digits.value[index] = ''
-    emit('update:modelValue', digits.value.join(''))
+  // Update the input value to show only the last digit
+  input.value = value.slice(-1)
+
+  // Create new value string
+  const newValue = props.modelValue.split('')
+  newValue[index] = value.slice(-1)
+  const finalValue = newValue.join('')
+  
+  emit('update:modelValue', finalValue)
+
+  // Move to next input if we have a value
+  if (value && index < 5) {
+    inputRefs.value[index + 1]?.focus()
+  }
+
+  // Emit complete event if all digits are filled
+  if (finalValue.length === 6) {
+    emit('complete', finalValue)
   }
 }
 
 const handleKeydown = (event: KeyboardEvent, index: number) => {
+  const input = event.target as HTMLInputElement
+  const key = event.key
+
   // Handle backspace
-  if (event.key === 'Backspace') {
-    event.preventDefault() // Prevent default backspace behavior
-    if (digits.value[index]) {
-      // If current input has a value, clear it
-      digits.value[index] = ''
-      emit('update:modelValue', digits.value.join(''))
-    } else if (index > 0) {
-      // If current input is empty, move to previous input and clear it
-      digits.value[index - 1] = ''
+  if (key === 'Backspace') {
+    event.preventDefault()
+    
+    // If current input has value, clear it
+    if (input.value) {
+      const newValue = props.modelValue.split('')
+      newValue[index] = ''
+      emit('update:modelValue', newValue.join(''))
+    }
+    // If current input is empty and not first input, move to previous
+    else if (index > 0) {
       inputRefs.value[index - 1]?.focus()
-      emit('update:modelValue', digits.value.join(''))
     }
   }
   // Handle left arrow
-  else if (event.key === 'ArrowLeft' && index > 0) {
+  else if (key === 'ArrowLeft' && index > 0) {
+    event.preventDefault()
     inputRefs.value[index - 1]?.focus()
   }
   // Handle right arrow
-  else if (event.key === 'ArrowRight' && index < 5) {
+  else if (key === 'ArrowRight' && index < 5) {
+    event.preventDefault()
     inputRefs.value[index + 1]?.focus()
+  }
+  // Handle delete
+  else if (key === 'Delete') {
+    event.preventDefault()
+    const newValue = props.modelValue.split('')
+    newValue[index] = ''
+    emit('update:modelValue', newValue.join(''))
   }
 }
 
@@ -109,40 +111,25 @@ const handlePaste = (event: ClipboardEvent) => {
   if (!pastedData) return
 
   // Extract only numbers and limit to 6 digits
-  const numbers = pastedData.replace(/[^0-9]/g, '').slice(0, 6)
-  
-  // Fill the inputs
-  const newDigits = Array(6).fill('')
-  numbers.split('').forEach((digit, index) => {
-    if (index < 6) {
-      newDigits[index] = digit
-    }
-  })
-  
-  digits.value = newDigits
-  emit('update:modelValue', digits.value.join(''))
+  const numbers = pastedData.replace(/\D/g, '').slice(0, 6)
+  emit('update:modelValue', numbers.padEnd(6, ''))
 
-  // Focus the next empty input or the last input
-  const nextEmptyIndex = digits.value.findIndex(digit => !digit)
-  if (nextEmptyIndex !== -1) {
-    inputRefs.value[nextEmptyIndex]?.focus()
+  // Focus the appropriate input
+  if (numbers.length < 6) {
+    inputRefs.value[numbers.length]?.focus()
   } else {
     inputRefs.value[5]?.focus()
-  }
-  
-  // If all digits are filled, emit complete
-  if (digits.value.join('').length === 6) {
-    emit('complete', digits.value.join(''))
+    emit('complete', numbers)
   }
 }
 
-// Clear all inputs method (exposed for parent component)
-const clear = () => {
-  digits.value = Array(6).fill('')
-  inputRefs.value[0]?.focus()
-}
-
-defineExpose({ clear })
+// Watch for external value changes
+watch(() => props.modelValue, (newValue) => {
+  // Ensure the value is always 6 characters (empty or numbers)
+  if (newValue.length < 6) {
+    emit('update:modelValue', newValue.padEnd(6, ''))
+  }
+})
 </script>
 
 <style scoped>
@@ -152,11 +139,7 @@ input::-webkit-inner-spin-button {
   margin: 0;
 }
 
-input[type="text"] {
-  caret-color: transparent;
-}
-
-input[type="text"]:focus {
-  caret-color: auto;
+input[type=number] {
+  -moz-appearance: textfield;
 }
 </style> 

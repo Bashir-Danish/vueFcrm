@@ -60,7 +60,8 @@ const fetchData = async () => {
     usersData.value.users = usersData.value.users.map((user) => ({
       ...user,
       tasks: assignedTasksData.value.assignedTasks.filter(
-        (task) => task.userId && typeof task.userId !== 'string' && task.userId._id === user._id && task.status === 'assigned'
+        (task) => task.userId && typeof task.userId !== 'string' && task.userId._id === user._id && task.status === 'assigned' && 
+        task.installationId && typeof task.installationId !== 'string' && task.installationId.status !== 'done'
       ),
     }));
   } catch (err) {

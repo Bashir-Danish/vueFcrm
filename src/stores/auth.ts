@@ -104,14 +104,98 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = async () => {
     try {
-      await axiosInstance.post('/api/auth/logout')
+      router.push('/auth/signin')
+
+      // Call the logout endpoint to invalidate the session on the server
+      await axiosInstance.post('/api/users/logout', {}, { 
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
     } catch (error) {
       console.error('Logout failed:', error)
     } finally {
+      // Clear all auth-related data from the store
       token.value = null
       user.value = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      isRefreshing.value = false
+      refreshPromise.value = null
+      
+      // Remove all auth-related items from localStorage
+      const itemsToRemove = [
+        'token',
+        'user',
+        'refreshToken',
+        'accessToken',
+        'session',
+        'login'
+      ]
+      
+      itemsToRemove.forEach(item => {
+        localStorage.removeItem(item)
+      })
+      
+      // Clear any other user-related data that might be stored
+      Object.keys(localStorage).forEach(key => {
+        if (
+          key.startsWith('user_') || 
+          key.includes('auth') || 
+          key.includes('token') || 
+          key.includes('session') ||
+          key.includes('login')
+        ) {
+          localStorage.removeItem(key)
+        }
+      })
+      
+      // Clear cookies that can be accessed by JavaScript
+      const cookiesToRemove = [
+        'muid',
+        'session',
+        'token'
+      ]
+      
+      // Get the current domain and path
+      const domain = window.location.hostname
+      const path = '/'
+      
+      // Set cookies to expire by setting their expiration date to the past
+      cookiesToRemove.forEach(cookieName => {
+        // Try with different combinations of domain and path
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`
+        
+        // Also try with .domain for subdomain coverage
+        if (domain !== 'localhost') {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`
+        }
+      })
+      
+      // Also try to clear all cookies that might be related to authentication
+      const allCookies = document.cookie.split(';')
+      allCookies.forEach(cookie => {
+        const cookieName = cookie.split('=')[0].trim()
+        if (
+          cookieName.includes('token') || 
+          cookieName.includes('auth') || 
+          cookieName.includes('session') ||
+          cookieName.includes('user')
+        ) {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`
+          
+          if (domain !== 'localhost') {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`
+          }
+        }
+      })
+      
+      // Navigate to login page using Vue Router before page reload
       router.push('/auth/signin')
     }
   }
@@ -178,32 +262,83 @@ export const useAuthStore = defineStore('auth', () => {
     return !!localStorage.getItem('token')
   })
 
-  const forgotPassword = async (payload: { email: string }) => {
+  const forgotPassword = async (email: string) => {
     try {
-      const response = await axiosInstance.post('/api/users/forgot-password', payload)
-      return response.data
+      // Use axios directly instead of axiosInstance to avoid auth headers
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/users/forgot-password`,
+        { email },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      return {
+        success: true,
+        message: response.data.message || 'Password reset instructions have been sent to your email',
+        email // Return email to be used in the OTP verification step
+      };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to send OTP')
+      console.error('Forgot password error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to process password reset request'
+      };
     }
-  }
+  };
 
-  const verifyOTP = async (payload: { email: string; otp: string }) => {
+  const verifyOtp = async (email: string, otp: string) => {
     try {
-      const response = await axiosInstance.post('/api/users/verify-otp', payload)
-      return response.data
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/users/verify-otp`,
+        { email, otp },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      return {
+        success: true,
+        resetToken: response.data.resetToken,
+        message: response.data.message || 'OTP verified successfully'
+      };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Invalid OTP')
+      console.error('OTP verification error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to verify OTP'
+      };
     }
-  }
+  };
 
-  const resetPassword = async (payload: { resetToken: string; newPassword: string }) => {
+  const resetPassword = async (resetToken: string, newPassword: string) => {
     try {
-      const response = await axiosInstance.post('/api/users/reset-password', payload)
-      return response.data
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/users/reset-password`,
+        { resetToken, newPassword },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      return {
+        success: true,
+        message: response.data.message || 'Password reset successful'
+      };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to reset password')
+      console.error('Password reset error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reset password'
+      };
     }
-  }
+  };
 
   return {
     token,
@@ -215,7 +350,7 @@ export const useAuthStore = defineStore('auth', () => {
     checkAuth,
     isLoggedIn,
     forgotPassword,
-    verifyOTP,
+    verifyOtp,
     resetPassword
   }
 })

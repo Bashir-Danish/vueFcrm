@@ -17,7 +17,23 @@ const authRoutes: RouteRecordRaw[] = [
                 meta: { allowUnauthenticated: true }
             },
             {
+                path: 'forgot-password',
+                name: 'forgotPassword',
+                component: () => import('@/views/auth/AuthForgotPassword.vue'),
+                meta: { allowUnauthenticated: true }
+            },
+            {
                 path: 'reset-password',
+                name: 'auth-reset-password',
+                component: () => import('@/components/auth/ResetPasswordFlow.vue'),
+                props: (route) => ({
+                    email: route.query.email,
+                    token: route.query.token
+                }),
+                meta: { allowUnauthenticated: true }
+            },
+            {
+                path: 'reset-password-profile',
                 name: 'resetPassword',
                 component: () => import('@/views/pages/profile/ResetPassword.vue'),
                 meta: { requiresAuth: true }

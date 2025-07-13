@@ -3,7 +3,7 @@ import { h, Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { formatDate, formatCurrency } from '@/utils/formatters';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, FileText, CreditCard, BanknoteIcon } from 'lucide-vue-next';
+import { Eye, Loader2, FileText, BanknoteIcon } from 'lucide-vue-next';
 
 export const createColumns = (onView: (payment: any) => void, loadingInvoiceId: Ref<string | null>): ColumnDef<any>[] => {
   const { t } = useI18n();

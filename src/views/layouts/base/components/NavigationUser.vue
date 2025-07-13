@@ -92,7 +92,7 @@ const router = useRouter();
 
 const handleLogout = async () => {
   await authStore.logout();
-  router.push("/auth/signin");
+  // No need to redirect here as it's already handled in the auth store
 };
 
 const navigateToProfile = () => {

@@ -1011,11 +1011,11 @@ const getServiceDurationInMonths = (packageName: string) => {
 };
 
 // Add this computed property to check if an invoice has payments
-const hasPayments = (transactionType: string) => {
-    const invoiceNumber = transactionType.split('#')[1];
-    const invoice = invoices.value.find(inv => inv.docNumber === invoiceNumber);
-    return (invoice?.payments ?? []).length > 0;
-};
+// const hasPayments = (transactionType: string) => {
+//     const invoiceNumber = transactionType.split('#')[1];
+//     const invoice = invoices.value.find(inv => inv.docNumber === invoiceNumber);
+//     return (invoice?.payments ?? []).length > 0;
+// };
 
 // Add this function before onMounted
 const getNextReferenceNumber = async () => {

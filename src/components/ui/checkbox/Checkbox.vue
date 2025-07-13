@@ -23,33 +23,37 @@ watch(() => props.indeterminate, (value) => {
 
 const inputClass = computed(() => 
   cn(
-    'peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background',
+    'peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background appearance-none',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     'disabled:cursor-not-allowed disabled:opacity-50',
-    'data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
+    'checked:bg-primary checked:border-primary checked:text-primary-foreground',
     props.class
   )
 )
 </script>
 
 <template>
-  <div class="relative flex items-center">
+  <label class="relative flex items-center cursor-pointer select-none">
     <input
       ref="checkbox"
       type="checkbox"
       :checked="checked"
       :class="inputClass"
       @change="emit('update:checked', ($event.target as HTMLInputElement).checked)"
+      :aria-checked="indeterminate ? 'mixed' : checked"
+      :indeterminate="indeterminate"
     />
-    <CheckIcon 
+    <span
       v-if="checked && !indeterminate"
-      class="absolute left-[2px] top-[2px] h-3 w-3 text-primary-foreground" 
-    />
-    <div 
-      v-if="indeterminate"
-      class="absolute left-[2px] top-[2px] h-3 w-3 flex items-center justify-center"
+      class="pointer-events-none absolute left-0 top-0 flex items-center justify-center h-4 w-4"
     >
-      <div class="h-[2px] w-[10px] bg-primary-foreground"></div>
-    </div>
-  </div>
+      <CheckIcon class="h-3 w-3 text-primary-foreground" />
+    </span>
+    <span
+      v-if="indeterminate"
+      class="pointer-events-none absolute left-0 top-0 flex items-center justify-center h-4 w-4"
+    >
+      <span class="h-[2px] w-[10px] bg-primary-foreground rounded"></span>
+    </span>
+  </label>
 </template>
