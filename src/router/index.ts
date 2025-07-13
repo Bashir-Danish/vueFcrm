@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 const routes: Array<RouteRecordRaw> = [...authRoutes]
 
 const router = createRouter({
-    history: createWebHistory(), // Use createWebHashHistory() if .htaccess doesn't work
+    history: createWebHistory(),
     routes
 })
 
