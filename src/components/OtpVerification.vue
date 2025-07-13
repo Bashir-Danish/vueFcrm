@@ -161,7 +161,7 @@ const emit = defineEmits<{
 }>()
 
 const auth = useAuthStore()
-const { locale } = useI18n()
+const { } = useI18n()
 
 const emailInput = ref(props.email || '')
 const showOtpForm = ref(!!props.email)

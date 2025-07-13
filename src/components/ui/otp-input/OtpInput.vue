@@ -1,6 +1,6 @@
 <template>
   <div class="grid grid-cols-6 gap-2">
-    <template v-for="(digit, index) in 6" :key="index">
+    <template v-for="(_, index) in 6" :key="index">
       <input
         type="text"
         inputmode="numeric"

@@ -192,20 +192,20 @@ const form = ref({
   resetToken: ''
 })
 
-const otpStatus = ref<'default' | 'success' | 'error'>('default')
+const otpStatus = ref<'error' | undefined>(undefined)
 
 const handleSendOTP = async () => {
   try {
     error.value = ''
     loading.value = true
-    otpStatus.value = 'default'
+    otpStatus.value = undefined
 
     const userEmail = authStore.user?.email 
     if (!userEmail) {
       throw new Error('userNotFound')
     }
 
-    await authStore.forgotPassword({ email: userEmail })
+    await authStore.forgotPassword(userEmail)
     
     toast({
       title: t('auth.resetPassword.success.otpSent'),
@@ -235,14 +235,10 @@ const handleOtpComplete = async (value: string) => {
   try {
     loading.value = true
     error.value = ''
-    otpStatus.value = 'default'
+    otpStatus.value = undefined
     
-    const response = await authStore.verifyOTP({
-      email: authStore.user?.email,
-      otp: value
-    })
+    const response = await authStore.verifyOtp(authStore.user?.email, value)
     
-    otpStatus.value = 'success'
     form.value.resetToken = response.resetToken
     
     // Wait a brief moment to show the success state
@@ -277,7 +273,7 @@ const handleOtpComplete = async (value: string) => {
     if (['OTP_EXPIRED', 'MAX_ATTEMPTS_REACHED'].includes(err.code)) {
       setTimeout(() => {
         step.value = 1
-        otpStatus.value = 'default'
+        otpStatus.value = undefined
         form.value.otp = ''
       }, 2000)
     }
@@ -301,10 +297,7 @@ const handleResetPassword = async () => {
       return
     }
 
-    await authStore.resetPassword({
-      resetToken: form.value.resetToken,
-      newPassword: form.value.newPassword
-    })
+    await authStore.resetPassword(form.value.resetToken, form.value.newPassword)
 
     toast({
       title: 'Success',

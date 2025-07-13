@@ -56,7 +56,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircleIcon } from '@heroicons/vue/24/solid'
+import { CheckCircleIcon } from 'lucide-vue-next'
 import OtpInput from '../ui/otp-input/OtpInput.vue'
 import ResetPasswordForm from '../ui/reset-password/ResetPasswordForm.vue'
 
