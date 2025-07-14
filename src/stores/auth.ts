@@ -103,101 +103,47 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const logout = async () => {
+    console.log('Logout initiated...')
+    
+    // FIRST: Clear all local authentication data immediately
+    clearAllAuthData()
+    
+    // SECOND: Try to call server logout (but don't let it block the local cleanup)
     try {
-      router.push('/auth/signin')
-
-      // Call the logout endpoint to invalidate the session on the server
+      console.log('Calling server logout...')
       await axiosInstance.post('/api/users/logout', {}, { 
         withCredentials: true,
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 5000 // 5 second timeout
       })
+      console.log('Server logout successful')
     } catch (error) {
-      console.error('Logout failed:', error)
-    } finally {
-      // Clear all auth-related data from the store
-      token.value = null
-      user.value = null
-      isRefreshing.value = false
-      refreshPromise.value = null
-      
-      // Remove all auth-related items from localStorage
-      const itemsToRemove = [
-        'token',
-        'user',
-        'refreshToken',
-        'accessToken',
-        'session',
-        'login'
-      ]
-      
-      itemsToRemove.forEach(item => {
-        localStorage.removeItem(item)
-      })
-      
-      // Clear any other user-related data that might be stored
-      Object.keys(localStorage).forEach(key => {
-        if (
-          key.startsWith('user_') || 
-          key.includes('auth') || 
-          key.includes('token') || 
-          key.includes('session') ||
-          key.includes('login')
-        ) {
-          localStorage.removeItem(key)
-        }
-      })
-      
-      // Clear cookies that can be accessed by JavaScript
-      const cookiesToRemove = [
-        'muid',
-        'session',
-        'token'
-      ]
-      
-      // Get the current domain and path
-      const domain = window.location.hostname
-      const path = '/'
-      
-      // Set cookies to expire by setting their expiration date to the past
-      cookiesToRemove.forEach(cookieName => {
-        // Try with different combinations of domain and path
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`
-        
-        // Also try with .domain for subdomain coverage
-        if (domain !== 'localhost') {
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`
-        }
-      })
-      
-      // Also try to clear all cookies that might be related to authentication
-      const allCookies = document.cookie.split(';')
-      allCookies.forEach(cookie => {
-        const cookieName = cookie.split('=')[0].trim()
-        if (
-          cookieName.includes('token') || 
-          cookieName.includes('auth') || 
-          cookieName.includes('session') ||
-          cookieName.includes('user')
-        ) {
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path};`
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain};`
-          
-          if (domain !== 'localhost') {
-            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`
-          }
-        }
-      })
-      
-      // Navigate to login page using Vue Router before page reload
-      router.push('/auth/signin')
+      console.warn('Server logout failed (continuing with local logout):', error)
+      // Don't throw error, continue with local logout
     }
+    
+    // THIRD: Navigate to login page
+    console.log('Navigating to login page...')
+    try {
+      await router.push('/auth/signin')
+      console.log('Navigation successful')
+    } catch (routerError) {
+      console.error('Router navigation failed, using window.location:', routerError)
+      // Fallback to window.location if router fails
+      window.location.href = '/auth/signin'
+    }
+    
+    // FOURTH: Force page reload to ensure complete cleanup (optional but thorough)
+    setTimeout(() => {
+      if (window.location.pathname !== '/auth/signin') {
+        console.log('Forcing page reload to ensure cleanup...')
+        window.location.href = '/auth/signin'
+      }
+    }, 100)
+    
+    console.log('Logout process completed')
   }
 
   const refreshToken = async () => {
@@ -247,14 +193,64 @@ export const useAuthStore = defineStore('auth', () => {
     return refreshPromise.value;
   }
 
+  const clearAllAuthData = () => {
+    console.log('Performing complete auth data cleanup...')
+    
+    // Clear store data
+    token.value = null
+    user.value = null
+    isRefreshing.value = false
+    refreshPromise.value = null
+    
+    // Clear all storage
+    localStorage.clear()
+    sessionStorage.clear()
+    
+    // Clear cookies
+    const domain = window.location.hostname
+    const allCookies = document.cookie.split(';')
+    
+    allCookies.forEach(cookie => {
+      const eqPos = cookie.indexOf('=')
+      const cookieName = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+      
+      if (cookieName) {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${domain};`
+        
+        if (domain !== 'localhost' && !domain.includes('127.0.0.1')) {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${domain};`
+        }
+      }
+    })
+    
+    console.log('Auth data cleanup completed')
+  }
+
   const checkAuth = () => {
-    const storedToken = localStorage.getItem('token')
-    const storedUser = getUserFromLocalStorage()
-    if (storedToken && storedUser) {
-      token.value = storedToken
-      user.value = storedUser
-      return true
+    try {
+      const storedToken = localStorage.getItem('token')
+      const storedUser = getUserFromLocalStorage()
+      
+      if (storedToken && storedUser) {
+        // Validate token format (basic check)
+        if (typeof storedToken === 'string' && storedToken.length > 10) {
+          token.value = storedToken
+          user.value = storedUser
+          console.log('Auth check successful - user authenticated')
+          return true
+        } else {
+          console.warn('Invalid token format, clearing auth data')
+          clearAllAuthData()
+        }
+      } else {
+        console.log('No valid auth data found')
+      }
+    } catch (error) {
+      console.error('Error during auth check:', error)
+      clearAllAuthData()
     }
+    
     return false
   }
 
@@ -348,6 +344,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     refreshToken,
     checkAuth,
+    clearAllAuthData,
     isLoggedIn,
     forgotPassword,
     verifyOtp,

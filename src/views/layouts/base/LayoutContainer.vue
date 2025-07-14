@@ -55,14 +55,20 @@ const applyTheme = (theme: string) => {
 }
 
 onBeforeMount(async () => {
+  isLoading.value = true
+  
   if (!authStore.checkAuth()) {
+    isLoading.value = false
     router.push('/auth/signin')
-  } else {
-    try {
-      await mainStore.fetchServices(undefined, 1, 100);
-    } catch (error) {
-      console.error('Error retrieving token or fetching initial services:', error);
-    }
+    return
+  }
+  
+  try {
+    await mainStore.fetchServices(undefined, 1, 100);
+  } catch (error) {
+    console.error('Error retrieving token or fetching initial services:', error);
+  } finally {
+    isLoading.value = false
   }
 })
 
@@ -76,9 +82,6 @@ onMounted(() => {
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     applyTheme(systemTheme)
   }
-  setTimeout(() => {
-    isLoading.value = false
-  }, 100)
 })
 </script>
 

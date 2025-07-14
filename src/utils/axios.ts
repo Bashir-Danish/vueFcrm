@@ -33,28 +33,37 @@ instance.interceptors.response.use(
     const authStore = useAuthStore();
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Skip interceptor for logout requests to prevent infinite loops
+    if (originalRequest.url?.includes('/logout')) {
+      return Promise.reject(error);
+    }
+
     // Handle token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+      console.log('401 error detected, attempting token refresh...');
 
       try {
         const newToken = await authStore.refreshToken();
         if (newToken) {
+          console.log('Token refresh successful, retrying original request');
           if (originalRequest.headers) {
             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
           }
           return instance(originalRequest);
         } else {
-          // If refresh token failed, logout and redirect to login
-          await authStore.logout();
+          // If refresh token failed, perform logout
+          console.log('Token refresh failed, logging out...');
+          authStore.clearAllAuthData();
           router.push('/auth/signin');
           return Promise.reject(new Error('Session expired. Please login again.'));
         }
       } catch (refreshError) {
-        // If refresh token throws an error, logout and redirect to login
-        await authStore.logout();
+        // If refresh token throws an error, perform logout
+        console.log('Token refresh error, logging out...', refreshError);
+        authStore.clearAllAuthData();
         router.push('/auth/signin');
-        return Promise.reject(refreshError);
+        return Promise.reject(new Error('Session expired. Please login again.'));
       }
     }
 
@@ -70,7 +79,9 @@ instance.interceptors.response.use(
         break;
       case 403:
         console.error('Forbidden:', error.response.data);
-        // Redirect to login if forbidden
+        // For 403, clear auth data and redirect to login
+        console.log('403 Forbidden, clearing auth data...');
+        authStore.clearAllAuthData();
         router.push('/auth/signin');
         break;
       case 404:

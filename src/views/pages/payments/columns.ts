@@ -86,7 +86,9 @@ export const createColumns = (onView: (payment: any) => void, loadingInvoiceId: 
       cell: ({ row }) => {
         const item = row.original;
         if (item.type === 'invoice') {
-          return h('div', {}, formatCurrency(item.balance || 0));
+          // Ensure balance is treated as a number and defaults to 0 if undefined/null
+          const balance = typeof item.balance === 'number' ? item.balance : (parseFloat(item.balance) || 0);
+          return h('div', {}, formatCurrency(balance));
         }
         return h('div', {}, '-');
       },

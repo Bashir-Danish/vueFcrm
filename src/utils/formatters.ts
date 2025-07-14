@@ -22,9 +22,12 @@ export const formatDate = (date: string | Date): string => {
  * @returns Formatted currency string
  */
 export const formatCurrency = (amount: number | string, currency: string = 'USD'): string => {
-  if (!amount) return '';
+  if (amount === null || amount === undefined || amount === '') return '';
   
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  // Handle NaN case
+  if (isNaN(numAmount)) return '';
   
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -40,9 +43,12 @@ export const formatCurrency = (amount: number | string, currency: string = 'USD'
  * @returns Formatted number string
  */
 export const formatNumber = (number: number | string): string => {
-  if (!number) return '';
+  if (number === null || number === undefined || number === '') return '';
   
   const numValue = typeof number === 'string' ? parseFloat(number) : number;
+  
+  // Handle NaN case
+  if (isNaN(numValue)) return '';
   
   return new Intl.NumberFormat('en-US').format(numValue);
 }; 

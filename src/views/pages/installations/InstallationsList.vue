@@ -3,6 +3,7 @@ import { onMounted, ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import DataTable from "@/components/ui/data-table/DataTable.vue";
 import { useMainStore } from "@/stores/main";
+import { useAuthStore } from "@/stores/auth";
 import { storeToRefs } from "pinia";
 import { getColumns } from "@/views/pages/installations/columns";
 import Button from "@/ui/button/button.vue";
@@ -14,7 +15,9 @@ import { useI18n } from 'vue-i18n'
 const router = useRouter();
 const route = useRoute();
 const mainStore = useMainStore();
+const authStore = useAuthStore();
 const { installationsData } = storeToRefs(mainStore);
+const { user } = storeToRefs(authStore);
 
 const filterFields = ref(["customerId", "status"]);
 const filterConfigs = ref({
@@ -111,7 +114,11 @@ onMounted(() => {
   const initialPage = page ? Number(page) : DEFAULT_PAGE;
   const initialLimit = limit ? Number(limit) : DEFAULT_LIMIT;
   const initialType = (routeType as string) || 'all';
-  const initialStatus = status && status !== '' ? (status as string).split(",").filter(Boolean) : [];
+  
+  // Check if user is installer and set default status accordingly
+  const isInstaller = user.value?.role === 'installer';
+  const defaultStatus = isInstaller ? ['in-progress'] : ['done'];
+  const initialStatus = status && status !== '' ? (status as string).split(",").filter(Boolean) : defaultStatus;
 
   installationsData.value.page = initialPage;
   installationsData.value.limit = initialLimit;
