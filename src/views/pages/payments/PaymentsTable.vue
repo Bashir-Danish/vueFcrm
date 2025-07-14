@@ -15,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { X } from 'lucide-vue-next';
 import debounce from 'lodash/debounce';
 import { useI18n } from 'vue-i18n';
 
@@ -154,6 +156,14 @@ onMounted(async () => {
   await loadInitialCustomers();
 });
 
+// Handle customer reset
+const handleCustomerReset = () => {
+  selectedCustomer.value = '';
+  customerSearch.value = '';
+  customerSelectOpen.value = false;
+  emit('customer-change', '');
+};
+
 // Update the handleCustomerChange function
 const handleCustomerChange = (customerId: string) => {
   selectedCustomer.value = customerId;
@@ -209,7 +219,7 @@ const selectedCustomerDisplay = computed(() => {
   if (!customer) return '';
   return customer.custType === 'business'
     ? customer.companyName
-    : `${customer.name} ${customer.lastName} (${customer.username})`;
+    : `${customer.name}  (${customer.username})`;
 });
 
 const handleScroll = async (event: Event) => {
@@ -255,50 +265,62 @@ const emit = defineEmits(['customer-change', 'page-change', 'limit-change']);
     >
       <template #toolbar>
         <div class="flex items-center space-x-4">
-          <Select v-model="selectedCustomer" @update:modelValue="handleCustomerChange">
-            <SelectTrigger class="w-[300px]" @click="customerSelectOpen = !customerSelectOpen">
-              <SelectValue :placeholder="t('payments.list.selectCustomer')">
-                {{ selectedCustomerDisplay }}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent v-if="customerSelectOpen" class="w-[var(--radix-select-trigger-width)]">
-              <div class="p-2">
-                <Input
-                  ref="customerSearchInputRef"
-                  v-model="customerSearch"
-                  :placeholder="t('payments.list.searchCustomers')"
-                  class="mb-2 h-8"
-                  @input="handleCustomerSearchInput"
-                  @click.stop
-                  @keydown.stop
-                />
-              </div>
-              <ScrollArea 
-                :style="{ height: `${Math.min(customers.length * 40 + (isLoadingCustomers ? 40 : 0), 250)}px` }"
-                @scroll="handleScroll"
-              >
-                <template v-if="!isLoadingCustomers">
-                  <SelectItem
-                    v-for="customer in customers"
-                    :key="customer._id"
-                    :value="customer.quickbooksCustomerId"
-                    @click="customerSelectOpen = false"
-                    tabindex="-1"
-                    class="rtl:text-right w-full"
-                  >
-                    <span class="rtl:mr-2 ltr:ml-2">
-                      {{ customer.custType === 'business' ? customer.companyName : `${customer.name} ${customer.lastName}` }}
-                    </span>
-                    <span class="text-muted-foreground">({{ customer.username }})</span>
-                  </SelectItem>
-                </template>
-                <div v-if="isLoadingCustomers" class="flex justify-center items-center py-2">
-                  <Loader2 class="rtl:ml-2 ltr:mr-2 h-4 w-4 animate-spin" />
-                  {{ t('payments.list.loading') }}
+          <div class="flex items-center space-x-2">
+            <Select v-model="selectedCustomer" @update:modelValue="handleCustomerChange">
+              <SelectTrigger class="w-[300px]" @click="customerSelectOpen = !customerSelectOpen">
+                <SelectValue :placeholder="t('payments.list.selectCustomer')">
+                  {{ selectedCustomerDisplay }}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent v-if="customerSelectOpen" class="w-[var(--radix-select-trigger-width)]">
+                <div class="p-2">
+                  <Input
+                    ref="customerSearchInputRef"
+                    v-model="customerSearch"
+                    :placeholder="t('payments.list.searchCustomers')"
+                    class="mb-2 h-8"
+                    @input="handleCustomerSearchInput"
+                    @click.stop
+                    @keydown.stop
+                  />
                 </div>
-              </ScrollArea>
-            </SelectContent>
-          </Select>
+                <ScrollArea 
+                  :style="{ height: `${Math.min(customers.length * 40 + (isLoadingCustomers ? 40 : 0), 250)}px` }"
+                  @scroll="handleScroll"
+                >
+                  <template v-if="!isLoadingCustomers">
+                    <SelectItem
+                      v-for="customer in customers"
+                      :key="customer._id"
+                      :value="customer.quickbooksCustomerId"
+                      @click="customerSelectOpen = false"
+                      tabindex="-1"
+                      class="rtl:text-right w-full"
+                    >
+                      <span class="rtl:mr-2 ltr:ml-2">
+                        {{ customer.custType === 'business' ? customer.companyName : `${customer.name}` }}
+                      </span>
+                      <span class="text-muted-foreground">({{ customer.username }})</span>
+                    </SelectItem>
+                  </template>
+                  <div v-if="isLoadingCustomers" class="flex justify-center items-center py-2">
+                    <Loader2 class="rtl:ml-2 ltr:mr-2 h-4 w-4 animate-spin" />
+                    {{ t('payments.list.loading') }}
+                  </div>
+                </ScrollArea>
+              </SelectContent>
+            </Select>
+            <Button
+              v-if="selectedCustomer"
+              variant="outline"
+              size="sm"
+              @click="handleCustomerReset"
+              class="h-9 px-3"
+              :title="t('payments.list.resetFilter')"
+            >
+              <X class="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </template>
 

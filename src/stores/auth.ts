@@ -20,6 +20,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(null)
   const user = ref<any | null>(null)
   const isRefreshing = ref(false)
+  const isLoggingOut = ref(false)
   const refreshPromise = ref<Promise<string | null> | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
@@ -105,46 +106,56 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     console.log('Logout initiated...')
     
-    // FIRST: Clear all local authentication data immediately
+    // FIRST: Set logout state immediately
+    isLoggingOut.value = true
+    
+    // SECOND: Clear all local authentication data immediately
     clearAllAuthData()
     
-    // SECOND: Try to call server logout (but don't let it block the local cleanup)
-    try {
-      console.log('Calling server logout...')
-      await axiosInstance.post('/api/users/logout', {}, { 
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 5000 // 5 second timeout
-      })
-      console.log('Server logout successful')
-    } catch (error) {
-      console.warn('Server logout failed (continuing with local logout):', error)
-      // Don't throw error, continue with local logout
-    }
-    
-    // THIRD: Navigate to login page
-    console.log('Navigating to login page...')
-    try {
-      await router.push('/auth/signin')
-      console.log('Navigation successful')
-    } catch (routerError) {
+    // SECOND: Immediately navigate (don't wait for server response)
+    console.log('Immediate navigation to login page...')
+    const navigationPromise = router.push('/auth/signin').catch((routerError) => {
       console.error('Router navigation failed, using window.location:', routerError)
-      // Fallback to window.location if router fails
+      window.location.href = '/auth/signin'
+    })
+    
+    // THIRD: Try to call server logout in parallel (non-blocking)
+    const serverLogoutPromise = (async () => {
+      try {
+        console.log('Calling server logout in background...')
+        await axiosInstance.post('/api/users/logout', {}, { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 3000 // Reduced timeout for faster UI response
+        })
+        console.log('Server logout successful')
+      } catch (error) {
+        console.warn('Server logout failed (local logout already completed):', error)
+      }
+    })()
+    
+    // Wait for navigation to complete, but don't wait for server logout
+    await navigationPromise
+    
+    // Optional: Force immediate redirect if still on protected route
+    if (window.location.pathname !== '/auth/signin' && 
+        !window.location.pathname.startsWith('/auth/')) {
+      console.log('Still on protected route, forcing immediate redirect...')
       window.location.href = '/auth/signin'
     }
     
-    // FOURTH: Force page reload to ensure complete cleanup (optional but thorough)
-    setTimeout(() => {
-      if (window.location.pathname !== '/auth/signin') {
-        console.log('Forcing page reload to ensure cleanup...')
-        window.location.href = '/auth/signin'
-      }
-    }, 100)
-    
-    console.log('Logout process completed')
-  }
+         console.log('Logout UI process completed')
+     
+     // Reset logout state
+     isLoggingOut.value = false
+     
+     // Server logout continues in background (non-blocking)
+     serverLogoutPromise.catch(() => {
+       // Already handled above, just prevent unhandled promise rejection
+     })
+   }
 
   const refreshToken = async () => {
     if (isRefreshing.value) {
@@ -200,6 +211,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     isRefreshing.value = false
+    isLoggingOut.value = false
     refreshPromise.value = null
     
     // Clear all storage
@@ -340,6 +352,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     isAuthenticated,
+    isLoggingOut,
     login,
     logout,
     refreshToken,

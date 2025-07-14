@@ -6,6 +6,7 @@ export default {
     noPayments: 'هیچ پرداختی یافت نشد',
     searchCustomers: 'جستجوی مشتریان',
     selectCustomer: 'انتخاب مشتری',
+    resetFilter: 'حذف فیلتر مشتری',
     transactionType: 'نوع تراکنش',
     allTransactions: 'همه',
     invoicesOnly: 'فاکتورها',

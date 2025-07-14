@@ -6,6 +6,7 @@ export default {
     noPayments: 'No payments found',
     searchCustomers: 'Search customers...',
     selectCustomer: 'Select a customer',
+    resetFilter: 'Reset customer filter',
     transactionType: 'Transaction Type',
     allTransactions: 'All',
     invoicesOnly: 'Invoices',

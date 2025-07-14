@@ -1,6 +1,7 @@
 <template>
-  <div v-if="isLoading" class="flex items-center justify-center h-screen">
+  <div v-if="isLoading || isLoggingOut" class="flex items-center justify-center h-screen">
     <CustomSpinner />
+    <div v-if="isLoggingOut" class="ml-3 text-gray-600">Logging out...</div>
   </div>
   <div v-else-if="isAuthenticated" class="flex h-screen overflow-hidden">
     <LayoutSidebar 
@@ -15,13 +16,14 @@
       </ScrollArea>
     </div>
   </div>
-  <div v-else>
-    <RouterView/>
+  <div v-else class="flex items-center justify-center h-screen">
+    <CustomSpinner />
+    <div class="ml-3 text-gray-600">Redirecting to login...</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeMount, computed } from 'vue'
+import { ref, onMounted, onBeforeMount, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import LayoutSidebar from '@/views/layouts/base/components/LayoutSidebar.vue'
 import { NavigationModel } from '@/model/Navigation.ts'
@@ -39,6 +41,16 @@ const mainStore = useMainStore()
 const authStore = useAuthStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isLoggingOut = computed(() => authStore.isLoggingOut)
+
+// Watch for authentication changes and immediately redirect
+watch(isAuthenticated, (newValue, oldValue) => {
+  if (oldValue === true && newValue === false && !authStore.isLoggingOut) {
+    // User just lost authentication (not from our logout process)
+    console.log('Authentication lost unexpectedly, redirecting to login...')
+    router.push('/auth/signin')
+  }
+}, { immediate: false })
 
 const handlerInitialize = () => {
   navigators.value = NavigationService.getNavigation()
