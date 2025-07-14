@@ -6,7 +6,7 @@
           Forgot Password
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
-          Enter your email address and we'll send you a code to reset your password
+          Enter your email address and we'll send you a code to reset your passwor
         </p>
       </div>
 
